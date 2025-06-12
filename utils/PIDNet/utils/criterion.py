@@ -4,8 +4,10 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from configs import config
-
+try:
+    from configs import config
+except:
+    from ..configs import config
 
 class CrossEntropy(nn.Module):
     def __init__(self, ignore_label=-1, weight=None):

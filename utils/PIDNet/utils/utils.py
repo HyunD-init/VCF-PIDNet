@@ -16,7 +16,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from configs import config
+try:
+    from configs import config
+except:
+    from ..configs import config
 
 class Custom_loss(nn.Module):
 

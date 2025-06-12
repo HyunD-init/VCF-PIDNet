@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 
-from blocks import *
+try:
+    from blocks import *
+except:
+    from .blocks import *
 
 
 class Encoder(nn.Module):

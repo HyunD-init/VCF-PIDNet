@@ -2,9 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 # from pytorch_msssim import MS_SSIM
-from PIDNet.utils.utils import Custom_loss
-from PIDNet.utils.criterion import BondaryLoss, CrossEntropy, OhemCrossEntropy
-
+try:
+    from PIDNet.utils.utils import Custom_loss
+    from PIDNet.utils.criterion import BondaryLoss, CrossEntropy, OhemCrossEntropy
+except:
+    from .PIDNet.utils.utils import Custom_loss
+    from .PIDNet.utils.criterion import BondaryLoss, CrossEntropy, OhemCrossEntropy
 SMOOTH = 1.0e-8
 
 
@@ -12,7 +15,7 @@ def get_loss(loss_name, loss_config):
 
     if loss_name == "pidnet-custom":
         
-        sem_func = CrossEntropy() if loss_config['loss_name'] == 'ce' else OhemCrossEntropy(ignore_label=255, thres= 0.9, min_kept=131072)
+        sem_func = CrossEntropy() if loss_config['loss_type'] == 'ce' else OhemCrossEntropy(ignore_label=255, thres= 0.9, min_kept=131072)
         bn_loss = BondaryLoss()
         loss = Custom_loss(sem_func, bn_loss)
         
