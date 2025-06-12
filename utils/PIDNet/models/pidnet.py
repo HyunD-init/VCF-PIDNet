@@ -265,7 +265,7 @@ class PIDNet_vcf(PIDNet):
         self.final_layer_vcf = segmenthead(planes * 4, head_planes, num_classes)
         
     def forward(self, x):
-
+        init_size = x.shape[-2:]
         width_output = x.shape[-1] // 8
         height_output = x.shape[-2] // 8
 
@@ -326,6 +326,23 @@ class PIDNet_vcf(PIDNet):
         if self.augment:
             x_extra_p = self.seghead_p(temp_p) # self.act2(self.seghead_p(temp_p))
             x_extra_d = self.seghead_d(temp_d) # self.act3(self.seghead_d(temp_d))
+            
+            x_extra_p = F.interpolate(
+                x_extra_p, size=init_size,
+                mode='bilinear', align_corners=algc
+            )
+            x_extra_d = F.interpolate(
+                x_extra_d, size=init_size,
+                mode='bilinear', align_corners=algc
+            )
+            x_ = F.interpolate(
+                x_, size=init_size,
+                mode='bilinear', align_corners=algc
+            )
+            x_vcf = F.interpolate(
+                x_vcf, size=init_size,
+                mode='bilinear', align_corners=algc
+            )
             return [x_extra_p, x_, x_extra_d, x_vcf]
         else:
             return (x_, x_vcf)    
@@ -433,7 +450,7 @@ if __name__ == '__main__1':
 
 
 if __name__ == "__main__":
-
+    import torch.nn.functional as F
     model = get_seg_model_vcf('pidnet_s', 17, p3=0.0, p4=0.0, p5=0.0)
     batch_num = 8
     channel_size = 3

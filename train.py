@@ -19,10 +19,10 @@ from utils.trainer import Trainer
 from utils.losses import get_loss
 
 root_path = r'C:\Users\taesh\cwc'
-size = (384, 384)
+size = (1024, 1024)
 
 
-def train_func(config, train_path, test_path):
+def train_func(config, train_path, valid_path):
 
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -38,25 +38,25 @@ def train_func(config, train_path, test_path):
     logger = get_logger(name='train',
                         file_path=os.path.join(train_result_path, 'log.log'),
                         level='info')
-
+    Custom_Dataset(size=(1024, 1024))
     train_dataset = Custom_Dataset(
-         data_path=train_path[0], label_path=train_path[1], size=size, mode='train',
+         data_path=train_path, size=size, mode='train', edge_pad=True
     )   
 
-    test_dataset = Custom_Dataset(
-         data_path=test_path[0], label_path=test_path[1], size=size, mode='test',
+    valid_dataset = Custom_Dataset(
+         data_path=valid_path, size=size, mode='valid', edge_pad=True
     )
     dataloader = {
         "train":DataLoader(
             dataset=train_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True,
             num_workers=10,
         ),
-        "test":DataLoader(
-            dataset=test_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True,
+        "valid":DataLoader(
+            dataset=valid_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True,
             num_workers=10,
         )
     }
-    logger.info(f"Load dataset, train: {len(dataloader['train'])}, val: {len(dataloader['test'])}")
+    logger.info(f"Load dataset, train: {len(dataloader['train'])}, val: {len(dataloader['valid'])}")
     # model setting
 
                                     
@@ -130,8 +130,11 @@ def train_func(config, train_path, test_path):
         row['train_loss'] = trainer.loss
         row['train_sem_loss'] = trainer.sem_loss
         row['train_bd_loss'] = trainer.bd_loss
+        row['train_vcf_loss'] = trainer.vcf_loss
         for key, value in trainer.metric.items():
             row['train_{}'.format(key)] = value
+        for key, value in trainer.vcf_metric.items():
+            row['train_vcf_{}'.format(key)] = value
         row['train_elapsed_time'] = round(end, 3)
 
 
@@ -140,13 +143,16 @@ def train_func(config, train_path, test_path):
         # Validation
         print(f"Epoch {epoch_id}/{config['epoch_num']} Validation..")
         start = time()
-        trainer.validate(dataloader=dataloader["test"], epoch_id=epoch_id)
+        trainer.validate(dataloader=dataloader["valid"], epoch_id=epoch_id)
         end = time()-start
         row['val_loss'] = trainer.loss
         row['val_sem_loss'] = trainer.sem_loss
         row['val_bd_loss'] = trainer.bd_loss
+        row['val_vcf_loss'] = trainer.vcf_loss
         for key, value in trainer.metric.items():
             row['val_{}'.format(key)] = value
+        for key, value in trainer.vcf_metric.items():
+            row['val_vcf_{}'.format(key)] = value
         row['val_elapsed_time'] = round(end, 3)
 
         trainer.clear_history()
@@ -196,14 +202,14 @@ if __name__=="__main__":
 
     os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
-    train_path, test_path = load_data(os.path.join(root_path, "dataset", "new_dataset"))
+    train_path, valid_path = load_data('/Users/spinai_dev/Dropbox/006_researchdata/0005_Lat_Lxray_label/won_dataset')
 
     train_fixed_config = config['train_fixed']
     model_fixed_config = config['model_fixed']
     max_cnt = 14
     cnt = 0
-    print("train path len : ",len(train_path[0]))
-    print("test path len : ",len(test_path[0]))
+    print("train path len : ",len(train_path))
+    print("valid path len : ",len(valid_path))
     for enc_rate in range(config['p3']+1):
         for skip_rate in range(config['p4']+1):
             for dec_rate in range(config['p5'] + 1):
@@ -232,5 +238,5 @@ if __name__=="__main__":
                                         **model_unfixed_config
                                     }
                                 },
-                                train_path=train_path, test_path=test_path,
+                                train_path=train_path, valid_path=valid_path,
                             )

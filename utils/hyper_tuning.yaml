@@ -9,6 +9,9 @@ train_fixed:
     - loss
     - sem_loss
     - bd_loss
+    - vcf_loss
+    - vcf_meanIoU
+    - vcf_f1Score
     - meanIoU
     - f1Score
   #-------------------------  
