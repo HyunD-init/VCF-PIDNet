@@ -1,0 +1,43 @@
+# path
+dataset_path: /Users/spinai_dev/Dropbox/006_researchdata/0005_Lat_Lxray_label/won_dataset
+
+# Training
+batch_size: 2
+epoch_num: 160
+height: 1024
+width: 1024
+initial_learning_rate:
+  - 1.0e-3
+  - 1.0e-4
+  - 1.0e-5
+minimum_learning_rate_relative_to_iterative:
+  - 1.0e-3
+restart_epoch: 30
+# Logging
+earlystopping_target: val_meanIoU
+earlystopping_patience: 35
+plot:
+  - loss
+  - sem_loss
+  - bd_loss
+  - vcf_loss
+  - vcf_meanIoU
+  - vcf_f1Score
+  - meanIoU
+  - f1Score
+# Model  
+model_name: pidnet_s
+in_channels: 3
+class_num: 11
+
+# metric & loss
+metirc_func:
+  - meanIoU
+  - f1Score
+loss_name: pidnet-custom
+loss_config:
+  loss_type: ce
+# Dropout
+p3: 0
+p4: 0
+p5: 0
