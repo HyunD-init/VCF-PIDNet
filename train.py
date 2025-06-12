@@ -18,33 +18,30 @@ from utils.utils import get_logger, EarlyStopper
 from utils.trainer import Trainer
 from utils.losses import get_loss
 
-root_path = r'C:\Users\taesh\cwc'
-size = (1024, 1024)
 
 
-def train_func(config, train_path, valid_path):
+def train_func(config, train_paths, valid_paths):
 
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"device is {device}")
     train_serial = datetime.now().strftime("%Y%m%d_%H%M%S")
-    train_result_path = os.path.join(root_path, "results", 'dataset_1700', 
-                                        config["model_name"],  "drop_expanded_rotate_discrete",
-                                        "{}_{}_{}".format(config['model_parameters']['p3'], config['model_parameters']['p4'],
+    train_result_path = os.path.join(root_path, "results",
+                                        config["model_name"], "dropout_{}_{}_{}".format(config['model_parameters']['p3'], config['model_parameters']['p4'],
                                          config['model_parameters']['p5'],),
                                         train_serial)
     os.makedirs(train_result_path, exist_ok=True)
 
     logger = get_logger(name='train',
-                        file_path=os.path.join(train_result_path, 'log.log'),
+                        file_path=os.path.join(train_result_path, 'logging.txt'),
                         level='info')
-    Custom_Dataset(size=(1024, 1024))
+    
     train_dataset = Custom_Dataset(
-         data_path=train_path, size=size, mode='train', edge_pad=True
+         data_path=train_paths, size=(config['height'], config['width']), mode='train', edge_pad=True
     )   
 
     valid_dataset = Custom_Dataset(
-         data_path=valid_path, size=size, mode='valid', edge_pad=True
+         data_path=valid_paths, size=(config['height'], config['width']), mode='valid', edge_pad=True
     )
     dataloader = {
         "train":DataLoader(
@@ -60,8 +57,7 @@ def train_func(config, train_path, valid_path):
     # model setting
 
                                     
-    model_name = config['model-name']
-    model = get_model(model_name, config[f'{model_name}-config'], device)
+    model = get_model(config['model_name'], config, device)
 
 
     # model_load_path = glob(os.path.join(root_path, "results", 'dataset_1700', 
@@ -77,18 +73,18 @@ def train_func(config, train_path, valid_path):
     #print("decoder drop out", model.decoder.blocks[0]['block'][3])
     # optimizer setting
     optimizer = optim.AdamW(
-        params=model.parameters(), lr=config["initial_learning_rate"]
+        params=model.parameters(), lr=config['training']["initial_learning_rate"]
     )
     # scheduler setting
     scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer=optimizer, T_0=config["restart_epoch"], eta_min=config["minimum_learning_rate"]
+        optimizer=optimizer, T_0=config["restart_epoch"], eta_min=config['training']["minimum_learning_rate"]
     )
 
     metric_func = dict()
-    for each_func in config[f'{model_name}-metirc_func']:
+    for each_func in config['metirc_func']:
         metric_func[each_func] = get_metric(each_func)
 
-    loss_func = get_loss(config[f'{model_name}-loss'])
+    loss_func = get_loss(config['loss_name'], config['loss_config'])
 
     earlystopper = EarlyStopper(
         patience=config['earlystopping_patience'],
@@ -194,18 +190,16 @@ if __name__=="__main__":
 
     os.environ['KMP_DUPLICATE_LIB_OK']='True'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-
-    config_path = os.path.join(root_path, 'unetSeries_torch', 'hyper_tuning.yaml')
+    root_path = os.path.dirname(__file__)
+    config_path = os.path.join(root_path, 'hyper_tuning.yaml')
     with open(config_path, 'r', encoding='UTF8') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     
 
     os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
-    train_path, valid_path = load_data('/Users/spinai_dev/Dropbox/006_researchdata/0005_Lat_Lxray_label/won_dataset')
+    train_path, valid_path = load_data(config['dataset_path'])
 
-    train_fixed_config = config['train_fixed']
-    model_fixed_config = config['model_fixed']
     max_cnt = 14
     cnt = 0
     print("train path len : ",len(train_path))
@@ -217,26 +211,19 @@ if __name__=="__main__":
                 if (enc_rate < skip_rate and skip_rate < dec_rate) or (enc_rate==0 and skip_rate==0 and dec_rate == 0) or (enc_rate==0 and skip_rate==0 and skip_rate < dec_rate) or (enc_rate==0 and enc_rate < skip_rate and skip_rate==dec_rate):
                     for lr in config['initial_learning_rate']:
                         for min_lr in config['minimum_learning_rate_relative_to_iterative']:
-                            train_unfixed_config = {
-                                'initial_learning_rate': lr,
-                                'minimum_learning_rate': min_lr*lr
-                            }
-                            model_unfixed_config = {
-                                # 'enc_use_drop': enc_rate,
-                                # #'dec_use_drop': dec_rate,
-                                # 'use_skip_drop':skip_rate,
-                                # 'use_dec_drop': dec_rate
-                                'p3':enc_rate,
-                                'p4':skip_rate,
-                                'p5':dec_rate,
-                            }
                             train_func(
                                 config={
-                                    **train_fixed_config, **train_unfixed_config,
+                                    **config,
+                                    'training':{
+                                        'initial_learning_rate': lr,
+                                        'minimum_learning_rate': min_lr*lr
+                                    },
                                     'model_parameters':{
-                                        **model_fixed_config,
-                                        **model_unfixed_config
+                                        'class_num':config['class_num'],
+                                        'p3':enc_rate,
+                                        'p4':skip_rate,
+                                        'p5':dec_rate,
                                     }
                                 },
-                                train_path=train_path, valid_path=valid_path,
+                                train_paths=train_path, valid_paths=valid_path,
                             )
