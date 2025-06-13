@@ -13,11 +13,12 @@ def get_metric(metric_name):
 
 def meanIoU(y_pred, y_true):
 
-    C = y_true.size()[-3]
+    C = y_pred.size()[-3]
 
     arg_pred = torch.argmax(y_pred, dim=-3)
+
     y_pred = F.one_hot(arg_pred, num_classes=C).permute(0, 3, 1, 2).to(torch.int32)
-    y_true = y_true.to(torch.int32)
+    y_true = F.one_hot(y_true, num_classes=C).permute(0, 3, 1, 2).to(torch.int32)
 
     inter = y_true & y_pred
     union = y_true | y_pred
@@ -28,11 +29,12 @@ def meanIoU(y_pred, y_true):
 
 def f1_score(y_pred, y_true):
 
-    C = y_true.size()[-3]
+    C = y_pred.size()[-3]
     
     arg_pred = torch.argmax(y_pred, dim=-3)
+    
     y_pred = F.one_hot(arg_pred, num_classes=C).permute(0, 3, 1, 2).to(torch.int32)
-    y_true = y_true.to(torch.int32)
+    y_true = F.one_hot(y_true, num_classes=C).permute(0, 3, 1, 2).to(torch.int32)
     
     TP_2 = (y_true & y_pred) * 2
     TP_2_FN_FP = y_true + y_pred

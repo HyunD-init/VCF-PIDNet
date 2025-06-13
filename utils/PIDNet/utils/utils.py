@@ -47,12 +47,13 @@ class Custom_loss(nn.Module):
                 h, w), mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS)
 
     acc  = self.pixel_acc(pred[1], level_label)
+
     loss_s = self.sem_loss(pred[:-2], level_label)
     loss_b = self.bd_loss(pred[-2], bd_gt)
 
     filler = torch.ones_like(level_label) * config.TRAIN.IGNORE_LABEL
-    bd_label = torch.where(F.sigmoid(pred[-2][:,0,:,:])>0.8, level_label, filler)
-    loss_sb = self.sem_loss(pred[1], bd_label)
+    bd_label = torch.where(F.sigmoid(pred[-2][:, 0, :, :])>0.8, level_label, filler).to(torch.long)
+    loss_sb = self.sem_loss([pred[1]], bd_label)
 
     loss_vcf = self.sem_loss([pred[-1]], vcf_label)
     # loss_vcf_sb = self.sem_loss(pred[-1], bd_label)

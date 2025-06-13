@@ -22,6 +22,7 @@ class Trainer():
         self.loss = 0
         self.sem_loss = 0
         self.bd_loss = 0
+        self.vcf_loss = 0
         self.metric = dict()
         self.vcf_metric = dict()
         
@@ -42,9 +43,9 @@ class Trainer():
             x = x.to(self.device, dtype=torch.float32)
             y_level = y[0]
             y_vcf = y[1]
-            y_level = y_level.to(self.device, dtype=torch.float32)
-            y_vcf = y_vcf.to(self.device, dtype=torch.float32)
-            bd = bd.to(self.device, dtype=torch.int32)
+            y_level = y_level.to(self.device, dtype=torch.long)
+            y_vcf = y_vcf.to(self.device, dtype=torch.long)
+            bd = bd.to(self.device, dtype=torch.float32)
 
 
 
@@ -108,8 +109,8 @@ class Trainer():
                 x = x.to(self.device, dtype=torch.float32)
                 y_level = y[0]
                 y_vcf = y[1]
-                y_level = y_level.to(self.device, dtype=torch.float32)
-                y_vcf = y_vcf.to(self.device, dtype=torch.float32)
+                y_level = y_level.to(self.device, dtype=torch.long)
+                y_vcf = y_vcf.to(self.device, dtype=torch.long)
                 bd = bd.to(self.device, dtype=torch.float32)
 
 
@@ -135,7 +136,7 @@ class Trainer():
         for key, value in self.metric.items():
             self.metric[key] = float(torch.round(value/len(dataloader), decimals=4))
         for key, value in self.vcf_metric.items():
-            self.metric[key] = float(torch.round(value/len(dataloader), decimals=4))
+            self.vcf_metric[key] = float(torch.round(value/len(dataloader), decimals=4))
         self.loss = round(self.loss/len(dataloader), 4)
         self.sem_loss = round(self.sem_loss/len(dataloader), 4)
         self.bd_loss = round(self.bd_loss/len(dataloader), 4)
