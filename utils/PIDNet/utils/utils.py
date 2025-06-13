@@ -40,22 +40,24 @@ class Custom_loss(nn.Module):
     
     
     h, w = level_label.size(1), level_label.size(2)
+    one_hot_level_label = F.one_hot(level_label, num_classes=pred[1].shape[1]).permute(0, 3, 1, 2).to(torch.int32)
+    one_hot_vcf_label = F.one_hot(vcf_label, num_classes=pred[-1].shape[1]).permute(0, 3, 1, 2).to(torch.int32)
     ph, pw = pred[0].size(2), pred[0].size(3)
     if ph != h or pw != w:
         for i in range(len(pred)):
             pred[i] = F.interpolate(pred[i], size=(
                 h, w), mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS)
 
-    acc  = self.pixel_acc(pred[1], level_label)
+    acc  = self.pixel_acc(pred[1], one_hot_level_label)
 
-    loss_s = self.sem_loss(pred[:-2], level_label)
+    loss_s = self.sem_loss(pred[:-2], one_hot_level_label)
     loss_b = self.bd_loss(pred[-2], bd_gt)
 
     filler = torch.ones_like(level_label) * config.TRAIN.IGNORE_LABEL
     bd_label = torch.where(F.sigmoid(pred[-2][:, 0, :, :])>0.8, level_label, filler).to(torch.long)
     loss_sb = self.sem_loss([pred[1]], bd_label)
 
-    loss_vcf = self.sem_loss([pred[-1]], vcf_label)
+    loss_vcf = self.sem_loss([pred[-1]], one_hot_vcf_label)
     # loss_vcf_sb = self.sem_loss(pred[-1], bd_label)
 
     loss = loss_s + loss_b + loss_sb + loss_vcf #+ loss_vcf_sb

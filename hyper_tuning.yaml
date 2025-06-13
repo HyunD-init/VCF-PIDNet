@@ -29,7 +29,7 @@ plot:
 model_name: pidnet_s
 in_channels: 3
 class_num: 11
-
+vcf_class_num: 4
 # metric & loss
 metirc_func:
   - meanIoU

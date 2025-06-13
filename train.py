@@ -37,11 +37,11 @@ def train_func(config, train_paths, valid_paths):
                         level='info')
     
     train_dataset = Custom_Dataset(
-         data_path=train_paths, size=(config['height'], config['width']), mode='train', edge_pad=True
+         data_path=train_paths[:4], size=(config['height'], config['width']), mode='train', edge_pad=True
     )   
 
     valid_dataset = Custom_Dataset(
-         data_path=valid_paths, size=(config['height'], config['width']), mode='valid', edge_pad=True
+         data_path=valid_paths[:4], size=(config['height'], config['width']), mode='valid', edge_pad=True
     )
     dataloader = {
         "train":DataLoader(
@@ -220,6 +220,7 @@ if __name__=="__main__":
                                     },
                                     'model_parameters':{
                                         'class_num':config['class_num'],
+                                        'vcf_class_num':config['vcf_class_num'],
                                         'p3':enc_rate,
                                         'p4':skip_rate,
                                         'p5':dec_rate,

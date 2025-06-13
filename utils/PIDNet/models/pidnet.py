@@ -202,7 +202,7 @@ class PIDNet(nn.Module):
         else:
             return x_    
 
-def get_seg_model(name, num_classes, p3=0.0, p4=0.0, p5=0.0): # model_pretrained, imgnet_pretrained=False,
+def get_seg_model(name, num_classes,  p3=0.0, p4=0.0, p5=0.0): # model_pretrained, imgnet_pretrained=False,
     
     if 'pidnet_s' == name:
         model = PIDNet(m=2, n=3, num_classes=num_classes, planes=32, ppm_planes=96, head_planes=128, augment=True,
@@ -219,7 +219,7 @@ def get_seg_model(name, num_classes, p3=0.0, p4=0.0, p5=0.0): # model_pretrained
 
 class PIDNet_vcf(PIDNet):
 
-    def __init__(self, m=2, n=3, num_classes=19, planes=64, ppm_planes=96, head_planes=128, augment=True, p3=0.0, p4=0.0, p5=0.0):
+    def __init__(self, m=2, n=3, num_classes=19, vcf_num_classes=4, planes=64, ppm_planes=96, head_planes=128, augment=True, p3=0.0, p4=0.0, p5=0.0):
         super(PIDNet_vcf, self).__init__(m=m, n=n, num_classes=num_classes, planes=planes, ppm_planes=ppm_planes, head_planes=head_planes, augment=augment, p3=p3, p4=p4, p5=p5)
         
         self.drop3_vcf = nn.Dropout(p=p3)
@@ -262,7 +262,7 @@ class PIDNet_vcf(PIDNet):
             self.dfm_vcf = Bag(planes * 4, planes * 4)
         # final_layer
 
-        self.final_layer_vcf = segmenthead(planes * 4, head_planes, num_classes)
+        self.final_layer_vcf = segmenthead(planes * 4, head_planes, vcf_num_classes)
         
     def forward(self, x):
         init_size = x.shape[-2:]
@@ -348,16 +348,16 @@ class PIDNet_vcf(PIDNet):
             return (x_, x_vcf)    
 
 
-def get_seg_model_vcf(name, num_classes, p3=0.0, p4=0.0, p5=0.0): # model_pretrained, imgnet_pretrained=False,
+def get_seg_model_vcf(name, num_classes, vcf_num_classes, p3=0.0, p4=0.0, p5=0.0): # model_pretrained, imgnet_pretrained=False,
     
     if 'pidnet_s' == name:
-        model = PIDNet_vcf(m=2, n=3, num_classes=num_classes, planes=32, ppm_planes=96, head_planes=128, augment=True,
+        model = PIDNet_vcf(m=2, n=3, num_classes=num_classes, vcf_num_classes=vcf_num_classes, planes=32, ppm_planes=96, head_planes=128, augment=True,
                       p3=p3, p4=p4, p5=p5)
     elif 'pidnet_m' == name:
-        model = PIDNet_vcf(m=2, n=3, num_classes=num_classes, planes=64, ppm_planes=96, head_planes=128, augment=True,
+        model = PIDNet_vcf(m=2, n=3, num_classes=num_classes, vcf_num_classes=vcf_num_classes, planes=64, ppm_planes=96, head_planes=128, augment=True,
                       p3=p3, p4=p4, p5=p5)
     elif 'pidnet_l' == name:
-        model = PIDNet_vcf(m=3, n=4, num_classes=num_classes, planes=64, ppm_planes=112, head_planes=256, augment=True,
+        model = PIDNet_vcf(m=3, n=4, num_classes=num_classes, vcf_num_classes=vcf_num_classes, planes=64, ppm_planes=112, head_planes=256, augment=True,
                       p3=p3, p4=p4, p5=p5)
     return model
 #-------------------------------------------------------------------------------------------

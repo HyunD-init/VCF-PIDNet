@@ -45,8 +45,8 @@ class Custom_Dataset(data.Dataset):
         angle = random.randint(-1, 1)*10
         
         data = self.read_image(idx, angle, *top_left_bottom_right)
-        vcf_label = self.read_mask(idx, angle, *top_left_bottom_right, label_type='vcf_mask').squeeze(0)
-        level_label = self.read_mask(idx, angle, *top_left_bottom_right, label_type='level_mask').squeeze(0)
+        vcf_label = self.read_mask(idx, angle, *top_left_bottom_right, label_type='vcf').squeeze(0)
+        level_label = self.read_mask(idx, angle, *top_left_bottom_right, label_type='level').squeeze(0)
 
         edge = self.edgeGen(level_label)
 
@@ -112,8 +112,8 @@ class Custom_Dataset(data.Dataset):
         for idx in range(temp.shape[-1]):
             temp[...,idx] = mclahe.mclahe(img[...,idx], n_bins=128, clip_limit=0.04, adaptive_hist_range=adaptive_hist_range)
         return temp
-    def read_mask(self, idx, angle, top, left, bottom, right, label_type='vcf_mask'):
-        path = os.path.join(self.data_path[idx].replace('images', 'masks').replace('.jpg', '.npy'))
+    def read_mask(self, idx, angle, top, left, bottom, right, label_type='vcf'):
+        path = os.path.join(self.data_path[idx].replace('images', f'masks_{label_type}').replace('.jpg', '.npy'))
         class_mask = np.load(path)
         class_mask = cv2.resize(class_mask, self.size, interpolation=cv2.INTER_NEAREST)  # Resize mask
         class_mask = class_mask.astype(np.float32)  # Ensure data type
