@@ -17,7 +17,7 @@ algc = False
 
 class PIDNet(nn.Module):
 
-    def __init__(self, m=2, n=3, num_classes=19, planes=64, ppm_planes=96, head_planes=128, augment=True, p3=0.0, p4=0.0, p5=0.0):
+    def __init__(self, m=2, n=3, num_classes=19, vcf_mode=1, planes=64, ppm_planes=96, head_planes=128, augment=True, p3=0.0, p4=0.0, p5=0.0):
         super(PIDNet, self).__init__()
         self.augment = augment
         
@@ -54,12 +54,12 @@ class PIDNet(nn.Module):
         
         # P Branch
         self.compression3 = nn.Sequential(
-                                          nn.Conv2d(planes * 4, planes * 2, kernel_size=1, bias=False),
+                                          nn.Conv2d(planes * 4 * (2 if vcf_mode == 2 else 1), planes * 2, kernel_size=1, bias=False),
                                           BatchNorm2d(planes * 2, momentum=bn_mom),
                                           )
 
         self.compression4 = nn.Sequential(
-                                          nn.Conv2d(planes * 8, planes * 2, kernel_size=1, bias=False),
+                                          nn.Conv2d(planes * 8 * (2 if vcf_mode == 2 else 1), planes * 2, kernel_size=1, bias=False),
                                           BatchNorm2d(planes * 2, momentum=bn_mom),
                                           )
         self.pag3 = PagFM(planes * 2, planes)
@@ -74,11 +74,11 @@ class PIDNet(nn.Module):
             self.layer3_d = self._make_single_layer(BasicBlock, planes * 2, planes)
             self.layer4_d = self._make_layer(Bottleneck, planes, planes, 1)
             self.diff3 = nn.Sequential(
-                                        nn.Conv2d(planes * 4, planes, kernel_size=3, padding=1, bias=False),
+                                        nn.Conv2d(planes * 4 * (2 if vcf_mode == 2 else 1), planes, kernel_size=3, padding=1, bias=False),
                                         BatchNorm2d(planes, momentum=bn_mom),
                                         )
             self.diff4 = nn.Sequential(
-                                     nn.Conv2d(planes * 8, planes * 2, kernel_size=3, padding=1, bias=False),
+                                     nn.Conv2d(planes * 8 * (2 if vcf_mode == 2 else 1), planes * 2, kernel_size=3, padding=1, bias=False),
                                      BatchNorm2d(planes * 2, momentum=bn_mom),
                                      )
             self.spp = PAPPM(planes * 16, ppm_planes, planes * 4)
@@ -87,11 +87,11 @@ class PIDNet(nn.Module):
             self.layer3_d = self._make_single_layer(BasicBlock, planes * 2, planes * 2)
             self.layer4_d = self._make_single_layer(BasicBlock, planes * 2, planes * 2)
             self.diff3 = nn.Sequential(
-                                        nn.Conv2d(planes * 4, planes * 2, kernel_size=3, padding=1, bias=False),
+                                        nn.Conv2d(planes * 4 * (2 if vcf_mode == 2 else 1), planes * 2, kernel_size=3, padding=1, bias=False),
                                         BatchNorm2d(planes * 2, momentum=bn_mom),
                                         )
             self.diff4 = nn.Sequential(
-                                     nn.Conv2d(planes * 8, planes * 2, kernel_size=3, padding=1, bias=False),
+                                     nn.Conv2d(planes * 8 * (2 if vcf_mode == 2 else 1), planes * 2, kernel_size=3, padding=1, bias=False),
                                      BatchNorm2d(planes * 2, momentum=bn_mom),
                                      )
             self.spp = DAPPM(planes * 16, ppm_planes, planes * 4)
@@ -219,8 +219,8 @@ def get_seg_model(name, num_classes,  p3=0.0, p4=0.0, p5=0.0): # model_pretraine
 
 class PIDNet_vcf(PIDNet):
 
-    def __init__(self, m=2, n=3, num_classes=19, vcf_num_classes=4, planes=64, ppm_planes=96, head_planes=128, augment=True, p3=0.0, p4=0.0, p5=0.0):
-        super(PIDNet_vcf, self).__init__(m=m, n=n, num_classes=num_classes, planes=planes, ppm_planes=ppm_planes, head_planes=head_planes, augment=augment, p3=p3, p4=p4, p5=p5)
+    def __init__(self, m=2, n=3, num_classes=19, vcf_num_classes=4, vcf_mode=1, planes=64, ppm_planes=96, head_planes=128, augment=True, p3=0.0, p4=0.0, p5=0.0):
+        super(PIDNet_vcf, self).__init__(m=m, n=n, num_classes=num_classes, vcf_mode=vcf_mode, planes=planes, ppm_planes=ppm_planes, head_planes=head_planes, augment=augment, p3=p3, p4=p4, p5=p5)
         
         self.drop3_vcf = nn.Dropout(p=p3)
         self.drop4_vcf = nn.Dropout(p=p4)
@@ -232,6 +232,8 @@ class PIDNet_vcf(PIDNet):
         self.layer3_vcf = self._make_layer(BasicBlock, planes * 2, planes * 4, n, stride=2)
         self.layer4_vcf = self._make_layer(BasicBlock, planes * 4, planes * 8, n, stride=2)
         self.layer5_vcf =  self._make_layer(Bottleneck, planes * 8, planes * 8, 2, stride=2)
+
+        self.vcf_mode = vcf_mode
 
         # D Branch part for vcf
         if m == 2:
@@ -280,24 +282,32 @@ class PIDNet_vcf(PIDNet):
 
         # stage 3
         x = self.drop3_I(self.relu(self.layer3(x))) # I
-        x_ = self.pag3(x_, self.compression3(x))
+        if self.vcf_mode == 1:
+            tmp_x_ = x
+        elif self.vcf_mode == 2:
+            tmp_x_ = torch.concat([x, x_vcf], dim=-3)
+
+        x_ = self.pag3(x_, self.compression3(tmp_x_))
         x_d = x_d + F.interpolate(
-                        self.diff3(x),
+                        self.diff3(tmp_x_),
                         size=[height_output, width_output],
                         mode='bilinear', align_corners=algc)
         if self.augment:
             temp_p = x_
         
         # vcf in stage 4
-        x_vcf = self.drop4_vcf(self.relu_vcf(self.layer4_vcf(x)))
+        x_vcf = self.drop4_vcf(self.relu_vcf(self.layer4_vcf(x_vcf)))
         # stage 4
         x = self.drop4_I(self.relu(self.layer4(x)))
         x_ = self.drop4_P(self.layer4_(self.relu(x_)))
         x_d = self.drop4_D(self.layer4_d(self.relu(x_d)))
-        
-        x_ = self.pag4(x_, self.compression4(x))
+        if self.vcf_mode == 1:
+            tmp_x_ = x
+        elif self.vcf_mode == 2:
+            tmp_x_ = torch.concat([x, x_vcf], dim=-3)
+        x_ = self.pag4(x_, self.compression4(tmp_x_))
         x_d = x_d + F.interpolate(
-                        self.diff4(x),
+                        self.diff4(tmp_x_),
                         size=[height_output, width_output],
                         mode='bilinear', align_corners=algc)
         if self.augment:
@@ -305,7 +315,7 @@ class PIDNet_vcf(PIDNet):
 
         # vcf in stage 5
         x_vcf = F.interpolate(
-            self.spp_vcf(self.drop5_vcf(self.layer5_vcf(x))),
+            self.spp_vcf(self.drop5_vcf(self.layer5_vcf(x_vcf))),
             size=[height_output, width_output],
             mode='bilinear', align_corners=algc
         )
@@ -348,16 +358,16 @@ class PIDNet_vcf(PIDNet):
             return (x_, x_vcf)    
 
 
-def get_seg_model_vcf(name, num_classes, vcf_num_classes, p3=0.0, p4=0.0, p5=0.0): # model_pretrained, imgnet_pretrained=False,
+def get_seg_model_vcf(name, num_classes, vcf_num_classes, vcf_mode=1, p3=0.0, p4=0.0, p5=0.0): # model_pretrained, imgnet_pretrained=False,
     
     if 'pidnet_s' == name:
-        model = PIDNet_vcf(m=2, n=3, num_classes=num_classes, vcf_num_classes=vcf_num_classes, planes=32, ppm_planes=96, head_planes=128, augment=True,
+        model = PIDNet_vcf(m=2, n=3, num_classes=num_classes, vcf_num_classes=vcf_num_classes, vcf_mode=vcf_mode, planes=32, ppm_planes=96, head_planes=128, augment=True,
                       p3=p3, p4=p4, p5=p5)
     elif 'pidnet_m' == name:
-        model = PIDNet_vcf(m=2, n=3, num_classes=num_classes, vcf_num_classes=vcf_num_classes, planes=64, ppm_planes=96, head_planes=128, augment=True,
+        model = PIDNet_vcf(m=2, n=3, num_classes=num_classes, vcf_num_classes=vcf_num_classes, vcf_mode=vcf_mode, planes=64, ppm_planes=96, head_planes=128, augment=True,
                       p3=p3, p4=p4, p5=p5)
     elif 'pidnet_l' == name:
-        model = PIDNet_vcf(m=3, n=4, num_classes=num_classes, vcf_num_classes=vcf_num_classes, planes=64, ppm_planes=112, head_planes=256, augment=True,
+        model = PIDNet_vcf(m=3, n=4, num_classes=num_classes, vcf_num_classes=vcf_num_classes, vcf_mode=vcf_mode, planes=64, ppm_planes=112, head_planes=256, augment=True,
                       p3=p3, p4=p4, p5=p5)
     return model
 #-------------------------------------------------------------------------------------------
@@ -451,15 +461,19 @@ if __name__ == '__main__1':
 
 if __name__ == "__main__":
     import torch.nn.functional as F
-    model = get_seg_model_vcf('pidnet_s', 17, p3=0.0, p4=0.0, p5=0.0)
-    batch_num = 8
-    channel_size = 3
-    img_size = 1024
-    x = torch.randn(batch_num, channel_size, img_size, img_size)
-    pred = model(x)
-    print(f"Input Size: {x.size()}")
-    if isinstance(pred, list):
-        for i in pred:
-            print(f"Output: {i.size()}")
-    else:
-        print(f"Output: {pred.size()}")
+    for vcf_mode in range(1, 3):
+        print(f"VCF MODE: {vcf_mode}")
+        for pidnet_mode in ['s', 'm', 'l']:
+            print(f"PIDNET MODE: {pidnet_mode}")
+            model = get_seg_model_vcf(f'pidnet_{pidnet_mode}', 17, 4, vcf_mode, p3=0.0, p4=0.0, p5=0.0)
+            batch_num = 8
+            channel_size = 3
+            img_size = 1024
+            x = torch.randn(batch_num, channel_size, img_size, img_size)
+            pred = model(x)
+            print(f"Input Size: {x.size()}")
+            if isinstance(pred, list):
+                for i in pred:
+                    print(f"Output: {i.size()}")
+            else:
+                print(f"Output: {pred.size()}")
