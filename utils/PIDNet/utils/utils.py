@@ -29,9 +29,9 @@ class Custom_loss(nn.Module):
     self.bd_loss = bd_loss
 
   def pixel_acc(self, pred, label):
-    _, preds = torch.max(pred, dim=1)
+
     valid = (label >= 0).long()
-    acc_sum = torch.sum(valid * (preds == label).long())
+    acc_sum = torch.sum(valid * (pred == label).long())
     pixel_sum = torch.sum(valid)
     acc = acc_sum.float() / (pixel_sum.float() + 1e-10)
     return acc
@@ -48,7 +48,7 @@ class Custom_loss(nn.Module):
             pred[i] = F.interpolate(pred[i], size=(
                 h, w), mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS)
 
-    acc  = self.pixel_acc(pred[1], one_hot_level_label)
+    acc  = self.pixel_acc(pred[1].argmax(-3), level_label)
 
     loss_s = self.sem_loss(pred[:-2], one_hot_level_label)
     loss_b = self.bd_loss(pred[-2], bd_gt)
