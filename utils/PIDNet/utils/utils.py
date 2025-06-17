@@ -40,8 +40,8 @@ class Custom_loss(nn.Module):
     
     
     h, w = level_label.size(1), level_label.size(2)
-    one_hot_level_label = F.one_hot(level_label, num_classes=pred[1].shape[1]).permute(0, 3, 1, 2).to(torch.int32)
-    one_hot_vcf_label = F.one_hot(vcf_label, num_classes=pred[-1].shape[1]).permute(0, 3, 1, 2).to(torch.int32)
+    one_hot_level_label = F.one_hot(level_label, num_classes=pred[1].shape[1]).permute(0, 3, 1, 2).to(torch.float32)
+    one_hot_vcf_label = F.one_hot(vcf_label, num_classes=pred[-1].shape[1]).permute(0, 3, 1, 2).to(torch.float322)
     ph, pw = pred[0].size(2), pred[0].size(3)
     if ph != h or pw != w:
         for i in range(len(pred)):
