@@ -13,7 +13,10 @@ except:
 def get_model(name, model_config, device):
 
     if 'pidnet' in name:
-        model = get_seg_model_vcf(model_config['model_name'], model_config['model_parameters']['class_num'], model_config['model_parameters']['vcf_class_num'],
+        model = get_seg_model_vcf(
+            name=model_config['model_name'], num_classes=model_config['model_parameters']['class_num'],
+            vcf_num_classes=model_config['model_parameters']['vcf_class_num'],
+            vcf_mode=model_config['model_parameters']['vcf_mode'],
             p3=model_config['model_parameters']['p3'],
             p4=model_config['model_parameters']['p4'],
             p5=model_config['model_parameters']['p5']).to(device)
