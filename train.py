@@ -221,6 +221,7 @@ if __name__=="__main__":
                                     'model_parameters':{
                                         'class_num':config['class_num'],
                                         'vcf_class_num':config['vcf_class_num'],
+                                        'vcf_mode':config['vcf_mode'],
                                         'p3':enc_rate,
                                         'p4':skip_rate,
                                         'p5':dec_rate,

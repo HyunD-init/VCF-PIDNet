@@ -1,5 +1,5 @@
 # path
-dataset_path: /Users/spinai_dev/Dropbox/006_researchdata/0005_Lat_Lxray_label/won_dataset
+dataset_path: /Users/spinai_dev/Dropbox/006_researchdata/0005_Lat_Lxray_label/won_dataset # D:\Dropbox\006_researchdata\0005_Lat_Lxray_label\won_dataset
 
 # Training
 batch_size: 2
@@ -30,6 +30,7 @@ model_name: pidnet_s
 in_channels: 3
 class_num: 11
 vcf_class_num: 4
+vcf_mode: 1
 # metric & loss
 metirc_func:
   - meanIoU
