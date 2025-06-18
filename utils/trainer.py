@@ -56,7 +56,7 @@ class Trainer():
             # Loss
 
             #loss = self.loss_func(y_pred, y)
-            loss, y_pred, acc, loss_list = self.loss_func(y_pred, y_level, y_vcf, bd)
+            loss, y_pred, acc, loss_list, vcf_acc = self.loss_func(y_pred, y_level, y_vcf, bd)
 
 
             # Update
@@ -119,7 +119,7 @@ class Trainer():
                 # loss, y_pred, acc, loss_list = self.model(x, y, bd)
                 y_pred = self.model(x)
 
-                loss, y_pred, acc, loss_list = self.loss_func(y_pred, y_level, y_vcf, bd)
+                loss, y_pred, acc, loss_list, vcf_acc = self.loss_func(y_pred, y_level, y_vcf, bd)
 
                 # record
                 for key, func in self.metric_func.items():

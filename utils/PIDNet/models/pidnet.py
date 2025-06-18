@@ -17,7 +17,7 @@ algc = False
 
 class PIDNet(nn.Module):
 
-    def __init__(self, m=2, n=3, num_classes=19, vcf_mode=1, planes=64, ppm_planes=96, head_planes=128, augment=True, p3=0.0, p4=0.0, p5=0.0):
+    def __init__(self, m=2, n=3, num_classes=19, planes=64, ppm_planes=96, head_planes=128, augment=True, p3=0.0, p4=0.0, p5=0.0):
         super(PIDNet, self).__init__()
         self.augment = augment
         
@@ -48,61 +48,61 @@ class PIDNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.layer1 = self._make_layer(BasicBlock, planes, planes, m)
         self.layer2 = self._make_layer(BasicBlock, planes, planes * 2, m, stride=2)
-        self.layer3 = self._make_layer(BasicBlock, planes * 2, planes * 4, n, stride=2)
-        self.layer4 = self._make_layer(BasicBlock, planes * 4, planes * 8, n, stride=2)
-        self.layer5 =  self._make_layer(Bottleneck, planes * 8, planes * 8, 2, stride=2)
+        self.layer3_I = self._make_layer(BasicBlock, planes * 2, planes * 4, n, stride=2)
+        self.layer4_I = self._make_layer(BasicBlock, planes * 4, planes * 8, n, stride=2)
+        self.layer5_I =  self._make_layer(Bottleneck, planes * 8, planes * 8, 2, stride=2)
         
         # P Branch
         self.compression3 = nn.Sequential(
-                                          nn.Conv2d(planes * 4 * (2 if vcf_mode == 2 else 1), planes * 2, kernel_size=1, bias=False),
+                                          nn.Conv2d(planes * 4, planes * 2, kernel_size=1, bias=False),
                                           BatchNorm2d(planes * 2, momentum=bn_mom),
                                           )
 
         self.compression4 = nn.Sequential(
-                                          nn.Conv2d(planes * 8 * (2 if vcf_mode == 2 else 1), planes * 2, kernel_size=1, bias=False),
+                                          nn.Conv2d(planes * 8, planes * 2, kernel_size=1, bias=False),
                                           BatchNorm2d(planes * 2, momentum=bn_mom),
                                           )
         self.pag3 = PagFM(planes * 2, planes)
         self.pag4 = PagFM(planes * 2, planes)
 
-        self.layer3_ = self._make_layer(BasicBlock, planes * 2, planes * 2, m)
-        self.layer4_ = self._make_layer(BasicBlock, planes * 2, planes * 2, m)
-        self.layer5_ = self._make_layer(Bottleneck, planes * 2, planes * 2, 1)
+        self.layer3_P = self._make_layer(BasicBlock, planes * 2, planes * 2, m)
+        self.layer4_P = self._make_layer(BasicBlock, planes * 2, planes * 2, m)
+        self.layer5_P = self._make_layer(Bottleneck, planes * 2, planes * 2, 1)
         
         # D Branch
         if m == 2:
-            self.layer3_d = self._make_single_layer(BasicBlock, planes * 2, planes)
-            self.layer4_d = self._make_layer(Bottleneck, planes, planes, 1)
+            self.layer3_D = self._make_single_layer(BasicBlock, planes * 2, planes)
+            self.layer4_D = self._make_layer(Bottleneck, planes, planes, 1)
             self.diff3 = nn.Sequential(
-                                        nn.Conv2d(planes * 4 * (2 if vcf_mode == 2 else 1), planes, kernel_size=3, padding=1, bias=False),
+                                        nn.Conv2d(planes * 4, planes, kernel_size=3, padding=1, bias=False),
                                         BatchNorm2d(planes, momentum=bn_mom),
                                         )
             self.diff4 = nn.Sequential(
-                                     nn.Conv2d(planes * 8 * (2 if vcf_mode == 2 else 1), planes * 2, kernel_size=3, padding=1, bias=False),
+                                     nn.Conv2d(planes * 8, planes * 2, kernel_size=3, padding=1, bias=False),
                                      BatchNorm2d(planes * 2, momentum=bn_mom),
                                      )
             self.spp = PAPPM(planes * 16, ppm_planes, planes * 4)
             self.dfm = Light_Bag(planes * 4, planes * 4)
         else:
-            self.layer3_d = self._make_single_layer(BasicBlock, planes * 2, planes * 2)
-            self.layer4_d = self._make_single_layer(BasicBlock, planes * 2, planes * 2)
+            self.layer3_D = self._make_single_layer(BasicBlock, planes * 2, planes * 2)
+            self.layer4_D = self._make_single_layer(BasicBlock, planes * 2, planes * 2)
             self.diff3 = nn.Sequential(
-                                        nn.Conv2d(planes * 4 * (2 if vcf_mode == 2 else 1), planes * 2, kernel_size=3, padding=1, bias=False),
+                                        nn.Conv2d(planes * 4, planes * 2, kernel_size=3, padding=1, bias=False),
                                         BatchNorm2d(planes * 2, momentum=bn_mom),
                                         )
             self.diff4 = nn.Sequential(
-                                     nn.Conv2d(planes * 8 * (2 if vcf_mode == 2 else 1), planes * 2, kernel_size=3, padding=1, bias=False),
+                                     nn.Conv2d(planes * 8, planes * 2, kernel_size=3, padding=1, bias=False),
                                      BatchNorm2d(planes * 2, momentum=bn_mom),
                                      )
             self.spp = DAPPM(planes * 16, ppm_planes, planes * 4)
             self.dfm = Bag(planes * 4, planes * 4)
             
-        self.layer5_d = self._make_layer(Bottleneck, planes * 2, planes * 2, 1)
+        self.layer5_D = self._make_layer(Bottleneck, planes * 2, planes * 2, 1)
         
         # Prediction Head
         if self.augment:
-            self.seghead_p = segmenthead(planes * 2, head_planes, num_classes)
-            self.seghead_d = segmenthead(planes * 2, planes, 1) # num_classes)           
+            self.seghead_P = segmenthead(planes * 2, head_planes, num_classes)
+            self.seghead_D = segmenthead(planes * 2, planes, 1) # num_classes)           
 
         self.final_layer = segmenthead(planes * 4, head_planes, num_classes)
         # self.act1 = nn.Softmax(dim=1)
@@ -159,11 +159,11 @@ class PIDNet(nn.Module):
         x = self.conv1(x)
         x = self.layer1(x)
         x = self.relu(self.layer2(self.relu(x))) # stage 2
-        x_ = self.drop3_P(self.layer3_(x)) # P, stage 2->3
-        x_d = self.drop3_D(self.layer3_d(x)) # D, stage 2->3
+        x_ = self.drop3_P(self.layer3_P(x)) # P, stage 2->3
+        x_d = self.drop3_D(self.layer3_D(x)) # D, stage 2->3
         
         # stage 3
-        x = self.drop3_I(self.relu(self.layer3(x))) # I
+        x = self.drop3_I(self.relu(self.layer3_I(x))) # I
         x_ = self.pag3(x_, self.compression3(x))
         x_d = x_d + F.interpolate(
                         self.diff3(x),
@@ -173,9 +173,9 @@ class PIDNet(nn.Module):
             temp_p = x_
         
         # stage 4
-        x = self.drop4_I(self.relu(self.layer4(x)))
-        x_ = self.drop4_P(self.layer4_(self.relu(x_)))
-        x_d = self.drop4_D(self.layer4_d(self.relu(x_d)))
+        x = self.drop4_I(self.relu(self.layer4_I(x)))
+        x_ = self.drop4_P(self.layer4_P(self.relu(x_)))
+        x_d = self.drop4_D(self.layer4_D(self.relu(x_d)))
         
         x_ = self.pag4(x_, self.compression4(x))
         x_d = x_d + F.interpolate(
@@ -186,18 +186,18 @@ class PIDNet(nn.Module):
             temp_d = x_d
 
         # stage 5
-        x_ = self.drop5_P(self.layer5_(self.relu(x_)))
-        x_d = self.drop5_D(self.layer5_d(self.relu(x_d)))
+        x_ = self.drop5_P(self.layer5_P(self.relu(x_)))
+        x_d = self.drop5_D(self.layer5_D(self.relu(x_d)))
         x = F.interpolate(
-                        self.spp(self.drop5_I(self.layer5(x))),
+                        self.spp(self.drop5_I(self.layer5_I(x))),
                         size=[height_output, width_output],
                         mode='bilinear', align_corners=algc)
 
         x_ = self.final_layer(self.dfm(x_, x, x_d)) # self.act1(self.final_layer(self.dfm(x_, x, x_d)))
 
         if self.augment:
-            x_extra_p = self.seghead_p(temp_p) # self.act2(self.seghead_p(temp_p))
-            x_extra_d = self.seghead_d(temp_d) # self.act3(self.seghead_d(temp_d))
+            x_extra_p = self.seghead_P(temp_p) # self.act2(self.seghead_p(temp_p))
+            x_extra_d = self.seghead_D(temp_d) # self.act3(self.seghead_d(temp_d))
             return [x_extra_p, x_, x_extra_d]
         else:
             return x_    
@@ -220,20 +220,41 @@ def get_seg_model(name, num_classes,  p3=0.0, p4=0.0, p5=0.0): # model_pretraine
 class PIDNet_vcf(PIDNet):
 
     def __init__(self, m=2, n=3, num_classes=19, vcf_num_classes=4, vcf_mode=1, planes=64, ppm_planes=96, head_planes=128, augment=True, p3=0.0, p4=0.0, p5=0.0):
-        super(PIDNet_vcf, self).__init__(m=m, n=n, num_classes=num_classes, vcf_mode=vcf_mode, planes=planes, ppm_planes=ppm_planes, head_planes=head_planes, augment=augment, p3=p3, p4=p4, p5=p5)
+        super(PIDNet_vcf, self).__init__(m=m, n=n, num_classes=num_classes, planes=planes, ppm_planes=ppm_planes, head_planes=head_planes, augment=augment, p3=p3, p4=p4, p5=p5)
         
-        self.drop3_vcf = nn.Dropout(p=p3)
-        self.drop4_vcf = nn.Dropout(p=p4)
-        self.drop5_vcf = nn.Dropout(p=p5)
+        self.drop3_P_vcf = nn.Dropout(p=p3) if vcf_mode < 2 else None
+        self.drop4_P_vcf = nn.Dropout(p=p4) if vcf_mode < 3 else None
+        self.drop5_P_vcf = nn.Dropout(p=p5) if vcf_mode < 4 else None
 
-        # vcf branch
+        self.drop3_I_vcf = nn.Dropout(p=p3) if vcf_mode < 2 else None
+        self.drop4_I_vcf = nn.Dropout(p=p4) if vcf_mode < 3 else None
+        self.drop5_I_vcf = nn.Dropout(p=p5) if vcf_mode < 4 else None
+
+        # vcf branch I branch
         self.relu_vcf = nn.ReLU(inplace=True)
         
-        self.layer3_vcf = self._make_layer(BasicBlock, planes * 2, planes * 4, n, stride=2)
-        self.layer4_vcf = self._make_layer(BasicBlock, planes * 4, planes * 8, n, stride=2)
-        self.layer5_vcf =  self._make_layer(Bottleneck, planes * 8, planes * 8, 2, stride=2)
+        self.layer3_I_vcf = self._make_layer(BasicBlock, planes * 2, planes * 4, n, stride=2) if vcf_mode < 2 else None
+        self.layer4_I_vcf = self._make_layer(BasicBlock, planes * 4, planes * 8, n, stride=2) if vcf_mode < 3 else None
+        self.layer5_I_vcf =  self._make_layer(Bottleneck, planes * 8, planes * 8, 2, stride=2) if vcf_mode < 4 else None
 
         self.vcf_mode = vcf_mode
+
+        # vcf branch P branch
+        self.compression3_vcf = nn.Sequential(
+                                          nn.Conv2d(planes * 4, planes * 2, kernel_size=1, bias=False),
+                                          BatchNorm2d(planes * 2, momentum=bn_mom),
+                                          ) if vcf_mode < 2 else None
+
+        self.compression4_vcf = nn.Sequential(
+                                          nn.Conv2d(planes * 8, planes * 2, kernel_size=1, bias=False),
+                                          BatchNorm2d(planes * 2, momentum=bn_mom),
+                                          ) if vcf_mode < 3 else None
+        self.pag3_vcf = PagFM(planes * 2, planes) if vcf_mode < 2 else None
+        self.pag4_vcf = PagFM(planes * 2, planes) if vcf_mode < 3 else None
+
+        self.layer3_P_vcf = self._make_layer(BasicBlock, planes * 2, planes * 2, m) if vcf_mode < 2 else None
+        self.layer4_P_vcf = self._make_layer(BasicBlock, planes * 2, planes * 2, m) if vcf_mode < 3 else None
+        self.layer5_P_vcf = self._make_layer(Bottleneck, planes * 2, planes * 2, 1) if vcf_mode < 4 else None
 
         # D Branch part for vcf
         if m == 2:
@@ -263,79 +284,120 @@ class PIDNet_vcf(PIDNet):
             self.spp_vcf = DAPPM(planes * 16, ppm_planes, planes * 4)
             self.dfm_vcf = Bag(planes * 4, planes * 4)
         # final_layer
-
+        if self.augment:
+            self.seghead_P_vcf = segmenthead(planes * 2, head_planes, vcf_num_classes)
         self.final_layer_vcf = segmenthead(planes * 4, head_planes, vcf_num_classes)
         
     def forward(self, x):
         init_size = x.shape[-2:]
         width_output = x.shape[-1] // 8
         height_output = x.shape[-2] // 8
-
+        
+        # stage 1
         x = self.conv1(x)
         x = self.layer1(x)
-        x = self.relu(self.layer2(self.relu(x))) # stage 2
-        x_ = self.drop3_P(self.layer3_(x)) # P, stage 2->3
-        x_d = self.drop3_D(self.layer3_d(x)) # D, stage 2->3
         
-        # vcf in stage 3
-        x_vcf = self.drop3_vcf(self.relu_vcf(self.layer3_vcf(x)))
-
+        # stage 2
+        x = self.relu(self.layer2(self.relu(x)))
+        # stage 2 -> 3
+        # P
+        x_p = self.drop3_P(self.layer3_P(x))
+        if self.vcf_mode < 2:
+            x_p_vcf = self.drop3_P_vcf(self.layer3_P_vcf(x))
+        else:
+            x_p_vcf = x_p
+        # I
+        x_i = self.drop3_I(self.relu(self.layer3_I(x)))
+        if self.vcf_mode < 2:
+            x_i_vcf = self.drop3_I_vcf(self.relu_vcf(self.layer3_I_vcf(x)))
+        else:
+            x_i_vcf = x_i
+        # D
+        x_d = self.drop3_D(self.layer3_D(x))
+        
         # stage 3
-        x = self.drop3_I(self.relu(self.layer3(x))) # I
-        if self.vcf_mode == 1:
-            tmp_x_ = x
-        elif self.vcf_mode == 2:
-            tmp_x_ = torch.concat([x, x_vcf], dim=-3)
-
-        x_ = self.pag3(x_, self.compression3(tmp_x_))
+        # P
+        x_p = self.pag3(x_p, self.compression3(x_i))
+        if self.vcf_mode < 2:
+            x_p_vcf = self.pag3_vcf(x_p_vcf, self.compression3_vcf(x_i_vcf))
+        else:
+            x_p_vcf = x_p
+        # D
         x_d = x_d + F.interpolate(
-                        self.diff3(tmp_x_),
+                        self.diff3(x_i),
                         size=[height_output, width_output],
                         mode='bilinear', align_corners=algc)
         if self.augment:
-            temp_p = x_
+            temp_p = x_p
+            temp_p_vcf = x_p_vcf
         
-        # vcf in stage 4
-        x_vcf = self.drop4_vcf(self.relu_vcf(self.layer4_vcf(x_vcf)))
+        # stage 3 -> 4
+        # P
+        x_p = self.drop4_P(self.layer4_P(self.relu(x_p)))
+        if self.vcf_mode < 3:
+            x_p_vcf = self.drop4_P_vcf(self.layer4_P_vcf(self.relu_vcf(x_p_vcf)))
+        else:
+            x_p_vcf = x_p
+        # I
+        x_i = self.drop4_I(self.relu(self.layer4_I(x_i)))
+        if self.vcf_mode < 3:
+            x_i_vcf = self.drop4_I_vcf(self.relu_vcf(self.layer4_I_vcf(x_i_vcf)))
+        else:
+            x_i_vcf = x_i
+        # D
+        x_d = self.drop4_D(self.layer4_D(self.relu(x_d)))
+
         # stage 4
-        x = self.drop4_I(self.relu(self.layer4(x)))
-        x_ = self.drop4_P(self.layer4_(self.relu(x_)))
-        x_d = self.drop4_D(self.layer4_d(self.relu(x_d)))
-        if self.vcf_mode == 1:
-            tmp_x_ = x
-        elif self.vcf_mode == 2:
-            tmp_x_ = torch.concat([x, x_vcf], dim=-3)
-        x_ = self.pag4(x_, self.compression4(tmp_x_))
+        # P
+        x_p = self.pag4(x_p, self.compression4(x_i))
+        if self.vcf_mode < 3:
+            x_p_vcf = self.pag4_vcf(x_p_vcf, self.compression4_vcf(x_i_vcf))
+        else:
+            x_p_vcf = x_p
+        # D
         x_d = x_d + F.interpolate(
-                        self.diff4(tmp_x_),
+                        self.diff4(x_i),
                         size=[height_output, width_output],
                         mode='bilinear', align_corners=algc)
         if self.augment:
             temp_d = x_d
+        
+        # stage 4 -> 5
+        x_p = self.drop5_P(self.layer5_P(self.relu(x_p)))
+        if self.vcf_mode < 4:
+            x_p_vcf = self.drop5_P_vcf(self.layer5_P_vcf(self.relu_vcf(x_p_vcf)))
+        else:
+            x_p_vcf = x_p
+        # I
+        x_i = self.drop5_I(self.layer5_I(x_i))
+        if self.vcf_mode < 4:
+            x_i_vcf = self.drop5_I_vcf(self.layer5_I_vcf(x_i_vcf))
+        else:
+            x_i_vcf = x_i
+        x_d = self.drop5_D(self.layer5_D(self.relu(x_d)))
 
-        # vcf in stage 5
-        x_vcf = F.interpolate(
-            self.spp_vcf(self.drop5_vcf(self.layer5_vcf(x_vcf))),
-            size=[height_output, width_output],
-            mode='bilinear', align_corners=algc
-        )
         # stage 5
-        x_ = self.drop5_P(self.layer5_(self.relu(x_)))
-        x_d = self.drop5_D(self.layer5_d(self.relu(x_d)))
-        x = F.interpolate(
-                        self.spp(self.drop5_I(self.layer5(x))),
+        # I
+        x_i = F.interpolate(
+                        self.spp(x_i),
                         size=[height_output, width_output],
                         mode='bilinear', align_corners=algc)
-
-        # vcf for final layer
-
-        x_vcf = self.final_layer_vcf(self.dfm_vcf(x_, x_vcf, x_d))
-
-        x_ = self.final_layer(self.dfm(x_, x, x_d)) # self.act1(self.final_layer(self.dfm(x_, x, x_d)))
-
+        x_i = self.final_layer(self.dfm(x_p, x_i, x_d))
+        if self.vcf_mode < 4:
+            x_i_vcf = F.interpolate(
+                self.spp_vcf(x_i_vcf),
+                size=[height_output, width_output],
+                mode='bilinear', align_corners=algc
+            )
+            x_i_vcf = self.final_layer_vcf(self.dfm_vcf(x_p_vcf, x_i_vcf, x_d))
+        else:
+            x_i_vcf = x_i
+        
         if self.augment:
-            x_extra_p = self.seghead_p(temp_p) # self.act2(self.seghead_p(temp_p))
-            x_extra_d = self.seghead_d(temp_d) # self.act3(self.seghead_d(temp_d))
+            x_extra_p = self.seghead_P(temp_p) # self.act2(self.seghead_p(temp_p))
+            if self.vcf_mode < 4:
+                x_extra_p_vcf = self.seghead_P_vcf(temp_p_vcf)
+            x_extra_d = self.seghead_D(temp_d) # self.act3(self.seghead_d(temp_d))
             
             x_extra_p = F.interpolate(
                 x_extra_p, size=init_size,
@@ -345,17 +407,21 @@ class PIDNet_vcf(PIDNet):
                 x_extra_d, size=init_size,
                 mode='bilinear', align_corners=algc
             )
-            x_ = F.interpolate(
-                x_, size=init_size,
+            x_i = F.interpolate(
+                x_i, size=init_size,
                 mode='bilinear', align_corners=algc
             )
-            x_vcf = F.interpolate(
-                x_vcf, size=init_size,
+            x_extra_p_vcf = F.interpolate(
+                x_extra_p_vcf, size=init_size,
                 mode='bilinear', align_corners=algc
             )
-            return [x_extra_p, x_, x_extra_d, x_vcf]
+            x_i_vcf = F.interpolate(
+                x_i_vcf, size=init_size,
+                mode='bilinear', align_corners=algc
+            )
+            return [x_extra_p, x_i, x_extra_d, x_extra_p_vcf, x_i_vcf]
         else:
-            return (x_, x_vcf)    
+            return (x_i, x_i_vcf)    
 
 
 def get_seg_model_vcf(name, num_classes, vcf_num_classes, vcf_mode=1, p3=0.0, p4=0.0, p5=0.0): # model_pretrained, imgnet_pretrained=False,
@@ -458,10 +524,17 @@ if __name__ == '__main__1':
 
 
 
+def count_parameters(model):
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total parameters     : {total:,}")
+    print(f"Trainable parameters : {trainable:,}")
+    return (total, trainable)
 
 if __name__ == "__main__":
     import torch.nn.functional as F
-    for vcf_mode in range(1, 3):
+    param_size = dict()
+    for vcf_mode in range(1, 4):
         print(f"VCF MODE: {vcf_mode}")
         for pidnet_mode in ['s', 'm', 'l']:
             print(f"PIDNET MODE: {pidnet_mode}")
@@ -471,9 +544,11 @@ if __name__ == "__main__":
             img_size = 1024
             x = torch.randn(batch_num, channel_size, img_size, img_size)
             pred = model(x)
-            print(f"Input Size: {x.size()}")
+            param_size[f"{pidnet_mode}-{vcf_mode}"] = count_parameters(model)
             if isinstance(pred, list):
                 for i in pred:
                     print(f"Output: {i.size()}")
             else:
                 print(f"Output: {pred.size()}")
+    for k, v in param_size.items():
+        print(k, ' : ', v)
