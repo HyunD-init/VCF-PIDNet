@@ -27,7 +27,7 @@ def train_func(config, train_paths, valid_paths):
     print(f"device is {device}")
     train_serial = datetime.now().strftime("%Y%m%d_%H%M%S")
     train_result_path = os.path.join(root_path, "results",
-                                        config["model_name"], "dropout_{}_{}_{}".format(config['model_parameters']['p3'], config['model_parameters']['p4'],
+                                        f'{config["model_name"]}-vcf_{config["model_parameters"]["vcf_mode"]}', "dropout_{}_{}_{}".format(config['model_parameters']['p3'], config['model_parameters']['p4'],
                                          config['model_parameters']['p5'],),
                                         train_serial)
     os.makedirs(train_result_path, exist_ok=True)
@@ -126,7 +126,7 @@ def train_func(config, train_paths, valid_paths):
         row['train_loss'] = trainer.loss
         row['train_sem_loss'] = trainer.sem_loss
         row['train_bd_loss'] = trainer.bd_loss
-        row['train_vcf_loss'] = trainer.vcf_loss
+        row['train_vcf_sem_loss'] = trainer.vcf_loss
         for key, value in trainer.metric.items():
             row['train_{}'.format(key)] = value
         for key, value in trainer.vcf_metric.items():
@@ -144,7 +144,7 @@ def train_func(config, train_paths, valid_paths):
         row['val_loss'] = trainer.loss
         row['val_sem_loss'] = trainer.sem_loss
         row['val_bd_loss'] = trainer.bd_loss
-        row['val_vcf_loss'] = trainer.vcf_loss
+        row['val_vcf_sem_loss'] = trainer.vcf_loss
         for key, value in trainer.metric.items():
             row['val_{}'.format(key)] = value
         for key, value in trainer.vcf_metric.items():
@@ -204,10 +204,9 @@ if __name__=="__main__":
     cnt = 0
     print("train path len : ",len(train_path))
     print("valid path len : ",len(valid_path))
-    for enc_rate in range(config['p3']+1):
-        for skip_rate in range(config['p4']+1):
-            for dec_rate in range(config['p5'] + 1):
-                #if enc_rate < dec_rate or (enc_rate==0 and dec_rate ==0):  
+    for enc_rate in range(0 if config['tuning'] else config['p3'], config['p3']+1):
+        for skip_rate in range(0 if config['tuning'] else config['p4'], config['p4']+1):
+            for dec_rate in range(0 if config['tuning'] else config['p5'], config['p5'] + 1):
                 if (enc_rate < skip_rate and skip_rate < dec_rate) or (enc_rate==0 and skip_rate==0 and dec_rate == 0) or (enc_rate==0 and skip_rate==0 and skip_rate < dec_rate) or (enc_rate==0 and enc_rate < skip_rate and skip_rate==dec_rate):
                     for lr in config['initial_learning_rate']:
                         for min_lr in config['minimum_learning_rate_relative_to_iterative']:

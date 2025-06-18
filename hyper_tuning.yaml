@@ -2,7 +2,7 @@
 dataset_path: /Users/spinai_dev/Dropbox/006_researchdata/0005_Lat_Lxray_label/won_dataset # D:\Dropbox\006_researchdata\0005_Lat_Lxray_label\won_dataset
 
 # Training
-batch_size: 2
+batch_size: 8
 epoch_num: 160
 height: 1024
 width: 1024
@@ -39,6 +39,7 @@ loss_name: pidnet-custom
 loss_config:
   loss_type: ce
 # Dropout
+tuning: False
 p3: 0
 p4: 0
 p5: 0
