@@ -59,6 +59,8 @@ class Custom_loss(nn.Module):
     loss_sb = self.sem_loss([pred[1]], bd_label)
 
     loss_s_vcf = self.sem_loss(pred[-2:], one_hot_vcf_label)
+    filler = torch.ones_like(vcf_label) * config.TRAIN.IGNORE_LABEL
+    bd_label = torch.where(F.sigmoid(pred[2][:, 0, :, :])>0.8, vcf_label, filler).to(torch.long)
     loss_sb_vcf = self.sem_loss([pred[-1]], bd_label)
 
     loss = loss_s + loss_b + loss_sb + loss_s_vcf + loss_sb_vcf

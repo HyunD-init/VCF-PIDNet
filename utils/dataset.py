@@ -25,7 +25,7 @@ class Custom_Dataset(data.Dataset):
         self.mode = mode
         self.resize = torchvision.transforms.Resize(size=(1024, 1024)) # aug
         albu_transform = [
-            # albu.Normalize(mean= 3028.37, std = 1720.31, max_pixel_value=1.0),
+            # albu.Normalize(normalization='image'),#mean= 3028.37, std = 1720.31, max_pixel_value=1.0),
             albu.LongestMaxSize(max_size=1024, interpolation=cv2.INTER_CUBIC, p=1),
             albu.PadIfNeeded(border_mode=cv2.BORDER_CONSTANT, min_height=1024, min_width=1024, p=1)
         ]
@@ -80,11 +80,12 @@ class Custom_Dataset(data.Dataset):
         # outlier clip
         x_cutoff_max = int(np.percentile(image, 99))
         image_clip = image.clip(0, x_cutoff_max)
+        image_clip = image_clip.astype(np.float32) / 255.0
         # normalization, resize
         sample = self.vcf_transforms(image=image_clip)
         image_transform = sample['image']
         # clahe
-        image_clahe = self.clahe(image_transform.astype(np.float32),True)
+        image_clahe = self.clahe(image_transform.astype(np.uint8),True)
         image_clahe = np.moveaxis(image_clahe,-1,0)
         x = torch.tensor(image_clahe)
         # ----------------------------------------------------------------
