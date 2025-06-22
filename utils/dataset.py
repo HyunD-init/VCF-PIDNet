@@ -14,8 +14,8 @@ import mclahe
 #from utils import noise_injection
 
 def load_data(path):
-    train_x = glob(os.path.join(path, "train", "images", "*.jpg"))
-    valid_x = glob(os.path.join(path, "valid", "images", "*.jpg"))
+    train_x = glob(os.path.join(path, "train", "images", "*.npy"))
+    valid_x = glob(os.path.join(path, "valid", "images", "*.npy"))
     return train_x, valid_x
 
 class Custom_Dataset(data.Dataset):
@@ -72,20 +72,22 @@ class Custom_Dataset(data.Dataset):
 
     def read_image(self, idx, angle, top, left, bottom, right):
         path = self.data_path[idx]
-        image = cv2.imread(path, cv2.IMREAD_COLOR)
-        image = cv2.resize(image, self.size, interpolation=cv2.INTER_LINEAR)
-        # ----------------------------------------------------------------
-        if len(image.shape) == 2:
-            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-        # outlier clip
-        x_cutoff_max = int(np.percentile(image, 99))
-        image_clip = image.clip(0, x_cutoff_max)
-        image_clip = image_clip.astype(np.float32) / 255.0
-        # normalization, resize
-        sample = self.vcf_transforms(image=image_clip)
-        image_transform = sample['image']
-        # clahe
-        image_clahe = self.clahe(image_transform.astype(np.uint8),True)
+        # ---------------------
+        image_clahe = np.load(path)
+        # image = cv2.imread(path, cv2.IMREAD_COLOR)
+        # image = cv2.resize(image, self.size, interpolation=cv2.INTER_LINEAR)
+        # # ----------------------------------------------------------------
+        # if len(image.shape) == 2:
+        #     image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        # # outlier clip
+        # x_cutoff_max = int(np.percentile(image, 99))
+        # image_clip = image.clip(0, x_cutoff_max)
+        # image_clip = image_clip.astype(np.float32) / 255.0
+        # # normalization, resize
+        # sample = self.vcf_transforms(image=image_clip)
+        # image_transform = sample['image']
+        # # clahe
+        # image_clahe = self.clahe(image_transform.astype(np.uint8),True)
         image_clahe = np.moveaxis(image_clahe,-1,0)
         x = torch.tensor(image_clahe)
         # ----------------------------------------------------------------
@@ -114,7 +116,7 @@ class Custom_Dataset(data.Dataset):
             temp[...,idx] = mclahe.mclahe(img[...,idx], n_bins=128, clip_limit=0.04, adaptive_hist_range=adaptive_hist_range)
         return temp
     def read_mask(self, idx, angle, top, left, bottom, right, label_type='vcf'):
-        path = os.path.join(self.data_path[idx].replace('images', f'masks_{label_type}').replace('.jpg', '.npy'))
+        path = os.path.join(self.data_path[idx].replace('images', f'masks_{label_type}'))
         class_mask = np.load(path)
         class_mask = cv2.resize(class_mask, self.size, interpolation=cv2.INTER_NEAREST)  # Resize mask
         class_mask = class_mask.astype(np.float32)  # Ensure data type
