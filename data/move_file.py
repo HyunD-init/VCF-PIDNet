@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from sklearn.model_selection import train_test_split
 
-from generate_labels import convert_colored_mask
+from generate_labels import convert_colored_mask, Preprocessing
 
 if __name__ == "__main__":
     data_root_path = '/Users/spinai_dev/Dropbox/006_researchdata/0005_Lat_Lxray_label'
@@ -20,8 +20,10 @@ if __name__ == "__main__":
         'Normal': 1, 'VCF': 2, 'latSacrum':3
     }
     vcf_normal_class = ['L5', 'L4', 'L3', 'L2', 'L1', 'T12', 'T11', 'T10', 'T9']
-    vcf_data_paths = glob(os.path.join(data_root_path, 'vcf', '*.jpg'))
-    normal_data_paths = glob(os.path.join(data_root_path, 'Lat_Lxray_label', '*.jpg'))
+    vcf_data_paths = glob(os.path.join(data_root_path, '0_vcf', '*.jpg'))
+    print(f"VCF: {len(vcf_data_paths)}")
+    normal_data_paths = glob(os.path.join(data_root_path, '0_Lat_Lxray_label_no_VCF', '*.jpg'))
+    print(f"NORMAL: {len(normal_data_paths)}")
 
     valid_test_ratio = 0.2
     test_ratio = 0.5
@@ -44,6 +46,7 @@ if __name__ == "__main__":
             'test':normal_test_path,
         }
     }
+    pre_obj = Preprocessing(size=(1024, 1024))
     for orig_type, img_dataset in orig_data.items():
         print(f"[{orig_type}]")
         for training_mode, img_paths in img_dataset.items():
@@ -59,3 +62,5 @@ if __name__ == "__main__":
                 # shutil.copy(img_src_path, os.path.join(dst_img_direc, os.path.basename(img_src_path)))
                 convert_colored_mask(json_src_path, dst_mask_vcf_direc, vcf_Label_Class, vcf_normal_class)
                 convert_colored_mask(json_src_path, dst_mask_normal_direc, Label_Class)
+                pre_obj.preprocessing_image(img_src_path, dst_img_direc)
+

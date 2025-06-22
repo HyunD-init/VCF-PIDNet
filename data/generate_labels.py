@@ -65,6 +65,47 @@ def convert_colored_mask(json_file, root, label_class, vcf_normal_class=None):
     except Exception as e:
         print(e)
         print(f"Failed to save colored mask image to {os.path.join(root, name)}")
+import albumentations as albu
+import mclahe
+import torchvision
+
+class Preprocessing(object):
+
+    def __init__(self, size=(1024, 1024)):
+        self.resize = torchvision.transforms.Resize(size=(1024, 1024))
+        albu_transform = [
+            # albu.Normalize(normalization='min_max'), #mean= 3028.37, std = 1720.31, max_pixel_value=1.0),
+            albu.LongestMaxSize(max_size=1024, interpolation=cv2.INTER_CUBIC, p=1),
+            albu.PadIfNeeded(border_mode=cv2.BORDER_CONSTANT, min_height=1024, min_width=1024, p=1)
+        ]
+        self.size = size
+        self.vcf_transforms = albu.Compose(albu_transform)
+
+    def preprocessing_image(self, path, save_direc):
+        image = cv2.imread(path, cv2.IMREAD_COLOR)
+        image = cv2.resize(image, self.size, interpolation=cv2.INTER_LINEAR)
+        # ----------------------------------------------------------------
+        if len(image.shape) == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        # outlier clip
+        x_cutoff_max = int(np.percentile(image, 99))
+        image_clip = image.clip(0, x_cutoff_max)
+        # normalization, resize
+        sample = self.vcf_transforms(image=image_clip)
+        image_transform = sample['image']
+        # clahe
+        image_clahe = self.clahe(image_transform.astype(np.float32),True)
+        np.save(os.path.join(save_direc, os.path.basename(path).replace('.jpg', '.npy')), image_clahe)
+
+    @staticmethod
+    def clahe(img, adaptive_hist_range=False):
+        """
+        input 1 numpy shape image (H x W x (D) x C)
+        """
+        temp = np.zeros_like(img)
+        for idx in range(temp.shape[-1]):
+            temp[...,idx] = mclahe.mclahe(img[...,idx], n_bins=128, clip_limit=0.04, adaptive_hist_range=adaptive_hist_range)
+        return temp
 
 if __name__ == '__main__':
     data_root_path = '/Users/spinai_dev/Dropbox/006_researchdata/0005_Lat_Lxray_label'
