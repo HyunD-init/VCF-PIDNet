@@ -287,7 +287,12 @@ class PIDNet_vcf(PIDNet):
         if self.augment:
             self.seghead_P_vcf = segmenthead(planes * 2, head_planes, vcf_num_classes)
         self.final_layer_vcf = segmenthead(planes * 4, head_planes, vcf_num_classes)
-        
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
     def forward(self, x):
         init_size = x.shape[-2:]
         width_output = x.shape[-1] // 8
