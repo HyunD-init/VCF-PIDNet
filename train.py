@@ -1,3 +1,4 @@
+import faulthandler
 import torch
 import torch.nn as nn
 from datetime import datetime
@@ -18,7 +19,9 @@ from utils.utils import get_logger, EarlyStopper
 from utils.trainer import Trainer
 from utils.losses import get_loss
 
-
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+torch.autograd.set_detect_anomaly(True)
+faulthandler.enable(open("low_level.log", "w"))
 
 def train_func(config, train_paths, valid_paths):
 
@@ -210,21 +213,26 @@ if __name__=="__main__":
                 if (enc_rate < skip_rate and skip_rate < dec_rate) or (enc_rate==0 and skip_rate==0 and dec_rate == 0) or (enc_rate==0 and skip_rate==0 and skip_rate < dec_rate) or (enc_rate==0 and enc_rate < skip_rate and skip_rate==dec_rate):
                     for lr in config['initial_learning_rate']:
                         for min_lr in config['minimum_learning_rate_relative_to_iterative']:
-                            train_func(
-                                config={
-                                    **config,
-                                    'training':{
-                                        'initial_learning_rate': lr,
-                                        'minimum_learning_rate': min_lr*lr
+                            try:
+                                train_func(
+                                    config={
+                                        **config,
+                                        'training':{
+                                            'initial_learning_rate': lr,
+                                            'minimum_learning_rate': min_lr*lr
+                                        },
+                                        'model_parameters':{
+                                            'class_num':config['class_num'],
+                                            'vcf_class_num':config['vcf_class_num'],
+                                            'vcf_mode':config['vcf_mode'],
+                                            'p3':enc_rate,
+                                            'p4':skip_rate,
+                                            'p5':dec_rate,
+                                        }
                                     },
-                                    'model_parameters':{
-                                        'class_num':config['class_num'],
-                                        'vcf_class_num':config['vcf_class_num'],
-                                        'vcf_mode':config['vcf_mode'],
-                                        'p3':enc_rate,
-                                        'p4':skip_rate,
-                                        'p5':dec_rate,
-                                    }
-                                },
-                                train_paths=train_path, valid_paths=valid_path,
-                            )
+                                    train_paths=train_path, valid_paths=valid_path,
+                                )
+                            except Exception as e:
+                                import traceback
+                                with open("crash.log", "w") as f:
+                                    traceback.print_exc(file=f)
