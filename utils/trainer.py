@@ -37,7 +37,7 @@ class Trainer():
         self.model.train()
 
         for batch_id, (x, y, bd) in enumerate(tqdm(dataloader)):
-
+            torch.cuda.empty_cache()
 
             # Load Data
             x = x.to(self.device, dtype=torch.float32)
@@ -51,12 +51,12 @@ class Trainer():
 
             # Prediction
             # loss, y_pred, acc, loss_list = self.model(x, y, bd)
-            y_pred = self.model(x)
+            y_pred_model = self.model(x)
 
             # Loss
 
             #loss = self.loss_func(y_pred, y)
-            loss, y_pred, acc, loss_list, vcf_acc = self.loss_func(y_pred, y_level, y_vcf, bd)
+            loss, y_pred, acc, loss_list, vcf_acc = self.loss_func(y_pred_model, y_level, y_vcf, bd)
 
 
             # Update
@@ -117,9 +117,9 @@ class Trainer():
 
                 # Prediction
                 # loss, y_pred, acc, loss_list = self.model(x, y, bd)
-                y_pred = self.model(x)
+                y_pred_model = self.model(x)
 
-                loss, y_pred, acc, loss_list, vcf_acc = self.loss_func(y_pred, y_level, y_vcf, bd)
+                loss, y_pred, acc, loss_list, vcf_acc = self.loss_func(y_pred_model, y_level, y_vcf, bd)
 
                 # record
                 for key, func in self.metric_func.items():
