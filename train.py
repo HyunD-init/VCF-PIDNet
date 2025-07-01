@@ -49,11 +49,11 @@ def train_func(config, train_paths, valid_paths):
     dataloader = {
         "train":DataLoader(
             dataset=train_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True,
-            num_workers=10,
+            num_workers=0,
         ),
         "valid":DataLoader(
             dataset=valid_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True,
-            num_workers=10,
+            num_workers=0,
         )
     }
     logger.info(f"Load dataset, train: {len(dataloader['train'])}, val: {len(dataloader['valid'])}")
