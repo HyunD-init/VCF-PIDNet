@@ -39,8 +39,107 @@ class CrossEntropy(nn.Module):
         else:
             raise ValueError("lengths of prediction and target are not identical!")
 
-        
 
+class FocalClsLoss(nn.Module):
+    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+        super().__init__()
+        self.alpha = alpha  # Tensor of shape [C] or scalar
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, logits, targets):
+        """
+        logits: (B, C) — raw outputs
+        targets: (B, C) — multi-label 0/1 targets
+        """
+        probs = torch.sigmoid(logits)                # (B, C)
+        pt = probs * targets + (1 - probs) * (1 - targets)  # pt = p if y==1 else 1-p
+        log_pt = torch.log(pt + 1e-8)
+        # focal term
+        focal_term = (1 - pt) ** self.gamma
+        # alpha weighting
+        if self.alpha is not None:
+            if isinstance(self.alpha, (float, int)):
+                alpha = torch.full_like(targets, self.alpha)
+            else:
+                alpha = self.alpha.to(logits.device)  # (C,)
+                alpha = alpha.unsqueeze(0).expand_as(targets)  # (B, C)
+            loss = -alpha * focal_term * log_pt
+        else:
+            loss = -focal_term * log_pt
+
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        return loss  # (B, C)
+    
+class Focal(nn.Module):
+    def __init__(self, alpha=1, gamma=2, reduction='mean', ignore_label=-1):
+        super(Focal, self).__init__()
+        # alpha: weight per class
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+        self.ignore_label = ignore_label
+    
+    def _forward(self, score, targets):
+        """
+        inputs: [B, C, H, W] → raw logits
+        targets: [B, H, W]   → class indices
+        """
+        if len(targets.shape) == 4:
+            targets = targets.argmax(1)
+        targets = targets.to(torch.long)
+        # Mask for ignore_index
+        valid_mask = (targets != self.ignore_label)  # [B, H, W]
+        targets = targets.clone()
+        targets[valid_mask == False] = 0  # temporarily fill with a valid class index
+        # Compute log-softmax
+        log_probs = F.log_softmax(score, dim=1)  # [B, C, H, W]
+        probs = torch.exp(log_probs)
+
+        # One-hot encode targets
+        targets_one_hot = F.one_hot(targets, num_classes=score.shape[1])  # [B, H, W, C]
+        targets_one_hot = targets_one_hot.permute(0, 3, 1, 2).float()       # [B, C, H, W]
+
+        # Focal loss core
+        pt = (probs * targets_one_hot).sum(dim=1)  # [B, H, W]
+        focal_term = (1 - pt) ** self.gamma
+        
+        # === Class-wise alpha 적용 ===
+        if isinstance(self.alpha, torch.Tensor):
+            if self.alpha.device != score.device:
+                self.alpha = self.alpha.to(score.device)
+            alpha_t = (self.alpha[targets] * valid_mask).float()  # [B, H, W]
+        else:
+            alpha_t = self.alpha  # scalar alpha
+
+        loss = -alpha_t * focal_term * (log_probs * targets_one_hot).sum(dim=1)  # [B, H, W]
+
+        # Apply ignore mask
+        loss = loss[valid_mask]
+
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:
+            return loss  # no reduction
+    
+    def forward(self, score, target):
+
+        if config.MODEL.NUM_OUTPUTS == 1:
+            score = [score]
+
+        balance_weights = config.LOSS.BALANCE_WEIGHTS
+        sb_weights = config.LOSS.SB_WEIGHTS
+        if len(balance_weights) == len(score):
+            return sum([w * self._forward(x, target) for (w, x) in zip(balance_weights, score)])
+        elif len(score) == 1:
+            return sb_weights * self._forward(score[0], target)
+        else:
+            raise ValueError("lengths of prediction and target are not identical!")
 
 class OhemCrossEntropy(nn.Module):
     def __init__(self, ignore_label=-1, thres=0.7,

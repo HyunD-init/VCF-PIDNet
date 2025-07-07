@@ -23,9 +23,10 @@ except:
 
 class Custom_loss(nn.Module):
 
-  def __init__(self, sem_loss, bd_loss):
+  def __init__(self, level_sem_loss, vcf_sem_loss, bd_loss):
     super(Custom_loss, self).__init__()
-    self.sem_loss = sem_loss
+    self.level_sem_loss = level_sem_loss
+    self.vcf_sem_loss = vcf_sem_loss
     self.bd_loss = bd_loss
 
   def pixel_acc(self, pred, label):
@@ -51,22 +52,64 @@ class Custom_loss(nn.Module):
     acc  = self.pixel_acc(pred[1].argmax(-3), level_label)
     vcf_acc = self.pixel_acc(pred[-2].argmax(-3), vcf_label)
 
-    loss_s = self.sem_loss(pred[:2], one_hot_level_label)
+    loss_s = self.level_sem_loss(pred[:2], one_hot_level_label)
     loss_b = self.bd_loss(pred[2], bd_gt)
 
     filler = torch.ones_like(level_label) * config.TRAIN.IGNORE_LABEL
     bd_label = torch.where(F.sigmoid(pred[2][:, 0, :, :])>0.8, level_label, filler).to(torch.long)
-    loss_sb = self.sem_loss([pred[1]], bd_label)
+    loss_sb = self.level_sem_loss([pred[1]], bd_label)
 
-    loss_s_vcf = self.sem_loss(pred[-2:], one_hot_vcf_label)
+    loss_s_vcf = self.vcf_sem_loss(pred[-2:], one_hot_vcf_label)
     filler = torch.ones_like(vcf_label) * config.TRAIN.IGNORE_LABEL
     bd_label = torch.where(F.sigmoid(pred[2][:, 0, :, :])>0.8, vcf_label, filler).to(torch.long)
-    loss_sb_vcf = self.sem_loss([pred[-1]], bd_label)
+    loss_sb_vcf = self.vcf_sem_loss([pred[-1]], bd_label)
 
     loss = loss_s + loss_b + loss_sb + loss_s_vcf + loss_sb_vcf
 
     return torch.unsqueeze(loss,0), [pred[1], pred[-1]], acc, [loss_s, loss_b, loss_s_vcf], vcf_acc
 
+
+class Custom_loss_cls(nn.Module):
+
+  def __init__(self, level_sem_loss, vcf_sem_loss, bd_loss):
+    super(Custom_loss_cls, self).__init__()
+    self.level_sem_loss = level_sem_loss
+    self.vcf_sem_loss = vcf_sem_loss
+    self.bd_loss = bd_loss
+
+  def pixel_acc(self, pred, label):
+
+    valid = (label >= 0).long()
+    acc_sum = torch.sum(valid * (pred == label).long())
+    pixel_sum = torch.sum(valid)
+    acc = acc_sum.float() / (pixel_sum.float() + 1e-10)
+    return acc
+
+  def forward(self, pred, level_label, vcf_label, bd_gt, *args, **kwargs):
+    
+    
+    h, w = level_label.size(1), level_label.size(2)
+    one_hot_level_label = F.one_hot(level_label, num_classes=pred[1].shape[1]).permute(0, 3, 1, 2).to(torch.float32)
+    
+    ph, pw = pred[0].size(2), pred[0].size(3)
+    if ph != h or pw != w:
+        for i in range(len(pred) - 1):
+            pred[i] = F.interpolate(pred[i], size=(
+                h, w), mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS)
+
+    acc  = self.pixel_acc(pred[1].argmax(-3), level_label)
+
+    loss_s = self.level_sem_loss(pred[:2], one_hot_level_label)
+    loss_b = self.bd_loss(pred[2], bd_gt)
+
+    filler = torch.ones_like(level_label) * config.TRAIN.IGNORE_LABEL
+    bd_label = torch.where(F.sigmoid(pred[2][:, 0, :, :])>0.8, level_label, filler).to(torch.long)
+    loss_sb = self.level_sem_loss([pred[1]], bd_label)
+
+    loss_cls_vcf = self.vcf_sem_loss(pred[-1], vcf_label)
+    loss = loss_s + loss_b + loss_sb + loss_cls_vcf
+
+    return torch.unsqueeze(loss,0), [pred[1], pred[-1]], acc, [loss_s, loss_b, loss_cls_vcf], None
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
