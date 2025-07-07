@@ -87,7 +87,14 @@ def train_func(config, train_paths, valid_paths):
     for each_func in config['metirc_func']:
         metric_func[each_func] = get_metric(each_func)
 
-    loss_func = get_loss(config['loss_name'], config['loss_config'])
+    if config['is_cls']:
+        cls_metric_func = dict()
+        for each_func in config['cls_metric_func']:
+            cls_metric_func[each_func] = get_metric(each_func)
+    else:
+        cls_metric_func = None
+
+    loss_func = get_loss(config['loss_name'], config['loss_config'], config['is_cls'])
 
     earlystopper = EarlyStopper(
         patience=config['earlystopping_patience'],
@@ -106,6 +113,7 @@ def train_func(config, train_paths, valid_paths):
         optimizer=optimizer,
         scheduler=scheduler,
         metric_func=metric_func,
+        cls_metric_func=cls_metric_func,
         loss_func=loss_func,
         device=device,
         logger=logger
@@ -129,7 +137,7 @@ def train_func(config, train_paths, valid_paths):
         row['train_loss'] = trainer.loss
         row['train_sem_loss'] = trainer.sem_loss
         row['train_bd_loss'] = trainer.bd_loss
-        row['train_vcf_sem_loss'] = trainer.vcf_loss
+        row['train_vcf_loss'] = trainer.vcf_loss
         for key, value in trainer.metric.items():
             row['train_{}'.format(key)] = value
         for key, value in trainer.vcf_metric.items():
@@ -147,7 +155,7 @@ def train_func(config, train_paths, valid_paths):
         row['val_loss'] = trainer.loss
         row['val_sem_loss'] = trainer.sem_loss
         row['val_bd_loss'] = trainer.bd_loss
-        row['val_vcf_sem_loss'] = trainer.vcf_loss
+        row['val_vcf_loss'] = trainer.vcf_loss
         for key, value in trainer.metric.items():
             row['val_{}'.format(key)] = value
         for key, value in trainer.vcf_metric.items():
