@@ -47,13 +47,14 @@ if __name__ == "__main__":
         }
     }
     pre_obj = Preprocessing(size=(1024, 1024))
+    direc_name = 'won_dataset1'
     for orig_type, img_dataset in orig_data.items():
         print(f"[{orig_type}]")
         for training_mode, img_paths in img_dataset.items():
             print(f"-------[{training_mode}]------")
-            dst_mask_vcf_direc = os.path.join(data_root_path, 'won_dataset', training_mode, 'masks_vcf')
-            dst_mask_normal_direc = os.path.join(data_root_path, 'won_dataset', training_mode, 'masks_level')
-            dst_img_direc = os.path.join(data_root_path, 'won_dataset', training_mode, 'images')
+            dst_mask_vcf_direc = os.path.join(data_root_path, direc_name, training_mode, 'masks_vcf')
+            dst_mask_normal_direc = os.path.join(data_root_path, direc_name, training_mode, 'masks_level')
+            dst_img_direc = os.path.join(data_root_path, direc_name, training_mode, 'images')
             os.makedirs(dst_mask_vcf_direc, exist_ok=True)
             os.makedirs(dst_mask_normal_direc, exist_ok=True)
             os.makedirs(dst_img_direc, exist_ok=True)
