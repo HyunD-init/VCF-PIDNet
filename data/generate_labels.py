@@ -4,7 +4,7 @@ import cv2
 from glob import glob
 from tqdm import tqdm
 
-def vcf_overlap_check(detected_vcf, shape):
+def vcf_overlap_check(detected_vcf, shape, vcf_info=None):
     for vcf in detected_vcf:
         
         if shape['label'] == 'VCF':
@@ -15,13 +15,19 @@ def vcf_overlap_check(detected_vcf, shape):
         if vcf_array.shape[0] == obj_array.shape[0]:
             dif_list = vcf_array - obj_array
             if (dif_list[0] == dif_list).all():
+                if vcf_info is not None:
+                    vcf_info['vcf'].append(shape['label'])
                 return True
     return False
 
 def convert_colored_mask(json_file, root, label_class, vcf_normal_class=None):
     name = os.path.basename(json_file).split('.')[0]
-    with open(json_file, 'r') as f:
-        all_labels = json.load(f)
+    try:
+        with open(json_file, 'r') as f:
+            all_labels = json.load(f)
+    except Exception as e:
+        print(str(e))
+        raise RuntimeError(json_file)
     height = all_labels['imageHeight']
     width = all_labels['imageWidth']
 
@@ -31,6 +37,7 @@ def convert_colored_mask(json_file, root, label_class, vcf_normal_class=None):
 
     maskImage = np.zeros((height, width, len(label_class)), dtype=np.uint8)
     detected_vcf = list()
+    vcf_info = {'vcf':list()}
     if vcf_normal_class is not None:
         for shape in all_labels['shapes']:
             if shape['label'] == 'VCF':
@@ -42,7 +49,7 @@ def convert_colored_mask(json_file, root, label_class, vcf_normal_class=None):
         elif (vcf_normal_class is not None):
             if not (label in label_class.keys() or label in vcf_normal_class):
                 continue
-            elif vcf_overlap_check(detected_vcf, shape):
+            elif vcf_overlap_check(detected_vcf, shape, vcf_info):
                 continue
         if vcf_normal_class is not None:
             label = shape['label']
@@ -61,9 +68,12 @@ def convert_colored_mask(json_file, root, label_class, vcf_normal_class=None):
     background_template = np.sum(maskImage, axis=-1)
     maskImage[:,:,0][background_template==0] = 1
     try:
+        with open(os.path.join(root, f"{name}.json"), 'w') as f:
+            json.dump(vcf_info, f)
         np.save("{}.npy".format(os.path.join(root, name)), maskImage.argmax(-1).astype(np.uint8))
     except Exception as e:
         print(e)
+        print(vcf_info)
         print(f"Failed to save colored mask image to {os.path.join(root, name)}")
 import albumentations as albu
 import mclahe
