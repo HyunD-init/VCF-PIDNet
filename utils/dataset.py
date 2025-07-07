@@ -3,9 +3,11 @@ import torch.utils.data as data
 import torchvision
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as F
+import torch.nn.functional as Ft
 import numpy as np
 import cv2
 import os
+import json
 from glob import glob
 import random
 import albumentations as albu
@@ -45,14 +47,31 @@ class Custom_Dataset(data.Dataset):
         angle = random.randint(-1, 1)*10
         
         data = self.read_image(idx, angle, *top_left_bottom_right)
-        vcf_label = self.read_mask(idx, angle, *top_left_bottom_right, label_type='vcf').squeeze(0)
+        # vcf_label = self.read_mask(idx, angle, *top_left_bottom_right, label_type='vcf').squeeze(0)
         level_label = self.read_mask(idx, angle, *top_left_bottom_right, label_type='level').squeeze(0)
+        vcf_cls = self.read_cls(idx)
+
 
         edge = self.edgeGen(level_label)
 
 
-        return (data, (level_label, vcf_label), edge)
-    
+        return (data, (level_label, vcf_cls), edge)
+    def read_cls(self, idx):
+        Label_Class = {
+            'L5': 1, 'L4': 2, 'L3': 3, 'L2': 4, 'L1': 5, 'T12': 6,
+            'T11': 7, 'T10': 8, 'T9': 9
+        }
+        path = self.data_path[idx].replace('images', f'masks_vcf').replace('.npy', '.json')
+        with open(path, 'r') as f:
+            json_file = json.load(f)
+        if len(json_file['vcf']) == 0:
+            return torch.tensor([1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        else:
+            detected_vcf = torch.tensor([Label_Class[k] for k in json_file['vcf']])
+            detected_vcf = Ft.one_hot(detected_vcf, num_classes=len(Label_Class) + 1).sum(dim=0)
+
+            return detected_vcf
+        
     def edgeGen(self, label):
 
         edge_size = 4

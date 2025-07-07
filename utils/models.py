@@ -4,16 +4,20 @@ from torch.nn.init import constant_, xavier_uniform_
 
 try:
     from modules import Encoder, Unet_Decoder, Unet3Plus_Decoder
-    from PIDNet.models.pidnet import get_seg_model_vcf
+    from PIDNet.models.pidnet import get_seg_model_vcf, get_seg_model_vcf_cls
 except:
     from .modules import Encoder, Unet_Decoder, Unet3Plus_Decoder
-    from .PIDNet.models.pidnet import get_seg_model_vcf
+    from .PIDNet.models.pidnet import get_seg_model_vcf, get_seg_model_vcf_cls
 
 
 def get_model(name, model_config, device):
 
     if 'pidnet' in name:
-        model = get_seg_model_vcf(
+        if model_config['is_cls']:
+            get_model_func = get_seg_model_vcf_cls
+        else:
+            get_model_func = get_seg_model_vcf
+        model = get_model_func(
             name=model_config['model_name'], num_classes=model_config['model_parameters']['class_num'],
             vcf_num_classes=model_config['model_parameters']['vcf_class_num'],
             vcf_mode=model_config['model_parameters']['vcf_mode'],

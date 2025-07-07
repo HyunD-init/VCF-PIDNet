@@ -9,12 +9,13 @@ noise_std = 0.01
 
 class Trainer():
 
-    def __init__( self, model, optimizer, scheduler, metric_func, loss_func, device, logger):
+    def __init__( self, model, optimizer, scheduler, metric_func, loss_func, device, logger, cls_metric_func=None):
 
         self.model = model
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.metric_func = metric_func
+        self.cls_metric_func = metric_func if cls_metric_func is None else cls_metric_func
         self.loss_func = loss_func
         self.device = device
         self.logger = logger
@@ -29,7 +30,7 @@ class Trainer():
         for func_name in self.metric_func.keys():
             self.metric[func_name] = 0
             
-        for func_name in self.metric_func.keys():
+        for func_name in self.cls_metric_func.keys():
             self.vcf_metric[func_name] = 0
 
     def train(self, dataloader, epoch_id=0):
@@ -71,7 +72,7 @@ class Trainer():
             for key, func in self.metric_func.items():
                 self.metric[key] += func(y_pred[0], y_level)
 
-            for key, func in self.metric_func.items():
+            for key, func in self.cls_metric_func.items():
                 self.vcf_metric[key] += func(y_pred[1], y_vcf)
 
             self.loss += loss.item()
@@ -124,7 +125,7 @@ class Trainer():
                 # record
                 for key, func in self.metric_func.items():
                     self.metric[key] += func(y_pred[0], y_level)
-                for key, func in self.metric_func.items():
+                for key, func in self.cls_metric_func.items():
                     self.vcf_metric[key] += func(y_pred[1], y_vcf)
                     
                 self.loss += loss.item()
@@ -158,6 +159,7 @@ class Trainer():
         self.vcf_loss = 0
         for func_name in self.metric_func.keys():
             self.metric[func_name] = 0
+        for func_name in self.cls_metric_func.keys():
             self.vcf_metric[func_name] = 0
         clear_message = f"TRAINER | Clear history, loss: {self.loss}, metric"
         for key, value in self.metric.items():
