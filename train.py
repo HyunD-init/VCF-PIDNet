@@ -85,12 +85,12 @@ def train_func(config, train_paths, valid_paths):
 
     metric_func = dict()
     for each_func in config['metirc_func']:
-        metric_func[each_func] = get_metric(each_func)
+        metric_func[each_func] = get_metric(each_func, device=device)
 
     if config['is_cls']:
         cls_metric_func = dict()
         for each_func in config['cls_metric_func']:
-            cls_metric_func[each_func] = get_metric(each_func)
+            cls_metric_func[each_func] = get_metric(each_func, device=device)
     else:
         cls_metric_func = None
 
