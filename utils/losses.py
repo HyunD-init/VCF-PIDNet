@@ -23,7 +23,13 @@ def get_loss(loss_name, loss_config, is_cls=False):
             sem_func = OhemCrossEntropy(ignore_label=255, thres= 0.9, min_kept=131072)
         bn_loss = BondaryLoss()
         if is_cls:
-            vcf_sem_loss = FocalClsLoss()
+            if loss_config['vcf_loss_type'] == 'bce':
+                vcf_sem_loss = nn.BCEWithLogitsLoss()
+            elif loss_config['vcf_loss_type'] == 'fc':
+                vcf_sem_loss = FocalClsLoss()
+            elif loss_config['vcf_loss_type'] == 'ms':
+                vcf_sem_loss = nn.MultiLabelSoftMarginLoss()
+            
             loss = Custom_loss_cls(sem_func, vcf_sem_loss, bn_loss)
         else:
             raise RuntimeError(is_cls)
