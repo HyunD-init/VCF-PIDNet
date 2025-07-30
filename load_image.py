@@ -40,7 +40,8 @@ if __name__ == '__main__':
                 'p3': config['p3'],
                 'p4': config['p4'],
                 'p5': config['p5'],
-            }
+            },
+            'is_cls': False,
         },
         device=device
     )
@@ -89,6 +90,7 @@ if __name__ == '__main__':
                 ax[0, 3].set_title('VCF Pred')
                 ax[0, 4].set_title('VCF Label')
             ax[i%10, 0].set_ylabel(i)
+            ax[i%10, 0].set_xlabel(os.path.basename(image_path).split('.')[0])
             level_label_path = image_path.replace('/images/', '/masks_level/')
             vcf_label_path = image_path.replace('/images/', '/masks_vcf/')
             img = np.load(image_path)
@@ -107,8 +109,8 @@ if __name__ == '__main__':
 
             ax[i%10, 1].imshow(level_palette[level_pred])
             ax[i%10, 2].imshow(level_palette[level])
-            ax[i%10, 3].imshow(level_palette[vcf_pred])
-            ax[i%10, 4].imshow(level_palette[vcf])
+            ax[i%10, 3].imshow(vcf_palette[vcf_pred])
+            ax[i%10, 4].imshow(vcf_palette[vcf])
             for idx in range(11):
                 cur_level_pred = level_pred == idx
                 cur_level = level == idx
