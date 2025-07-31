@@ -39,7 +39,7 @@ class Custom_Dataset(data.Dataset):
     def __len__(self):
         return len(self.data_path)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx): #랜덤으로 잘라서 augment
         top_left_bottom_right = [random.randint(-2, 2)*50  for a in range(4)]
         # if self.crop == "moveCrop":
         #     top_left_bottom_right[0] *= random.choice([-1, 1])
