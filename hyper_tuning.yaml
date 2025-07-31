@@ -45,7 +45,7 @@ loss_config:
   loss_type: fc
   vcf_loss_type: bce # bce, sm, fc
 # Dropout
-tuning: False
-p3: 0
+tuning: False #True로 하면 최댓값이 p3,p4,p5인 모든 파라미터에 대해 test 를 한다.  
+p3: 0 #여기는 추가한 dropout 부분
 p4: 0
 p5: 0
