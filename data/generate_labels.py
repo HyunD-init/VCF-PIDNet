@@ -104,9 +104,11 @@ class Preprocessing(object):
         sample = self.vcf_transforms(image=image_clip)
         image_transform = sample['image']
         # clahe
-        image_clahe = self.clahe(image_transform.astype(np.float32),True)
-        np.save(os.path.join(save_direc, os.path.basename(path).replace('.jpg', '.npy')), image_clahe)
-
+        #image_clahe = self.clahe(image_transform.astype(np.float32),True)
+        np.save(
+            os.path.join(save_direc, os.path.basename(path).replace('.jpg', '.npy')),
+            image_transform.astype(np.float32)
+        )
     @staticmethod
     def clahe(img, adaptive_hist_range=False):
         """
